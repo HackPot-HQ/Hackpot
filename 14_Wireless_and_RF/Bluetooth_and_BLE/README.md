@@ -1,6 +1,6 @@
-# Wireless and Radio
+# Bluetooth and BLE
 
-Wi-Fi, Bluetooth, RFID, and Software Defined Radio (SDR) tools.
+Bluetooth and Bluetooth Low Energy: scanning, sniffing, and attacking classic and low-energy devices.
 
 ## Resources
 
