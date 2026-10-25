@@ -25,17 +25,7 @@ Rules:
   - Type: ``type:tool``, `type:course`, `type:docs`, `type:wordlist`, `type:lab`, `type:article`, `type:video`
   - Cost: `free`, `paid`, `freemium`
   - Platform or tech as needed: `linux`, `windows`, `aws`, `gdb`, ...
-
-## What qualifies
-
-- Publicly accessible and security-relevant.
-- Actively maintained, or a classic that is still used on real engagements.
-- Dead links and archived projects get removed or clearly tagged as such.
-- List a resource in one leaf only; do not duplicate across subcategories.
-
-## Adding categories
-
-Open an issue first so we can agree on scope and placement. Top-level categories are numbered `NN_Name`; keep the existing folder naming convention.
+- Do **not** add star counts, popularity badges, or "last updated" notes manually: CI appends them automatically on the site for entries linking a GitHub repository.
 
 ## License
 

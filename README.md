@@ -18,7 +18,7 @@ A curated, category-first index of useful resources for penetration testers and 
 | [08 · Cloud and Containers](08_Cloud_and_Containers/README.md) | AWS/Azure/GCP auditing, Docker and Kubernetes |
 | [09 · Wordlists and Payloads](09_Wordlists_and_Payloads/README.md) | Dictionaries and reverse-shell payloads |
 | [10 · Learning and Resources](10_Learning_and_Resources/README.md) | Blogs, podcasts, cheat sheets, practice labs |
-| [11 · AI and Machine Learning](11_AI_and_Machine_Learning/README.md) | Attacking AI systems and using AI for offensive work |
+| [11 · AI and Machine Learning](11_AI_and_Machine_Learning/README.md) | Attacking AI systems, AI-assisted offense, and AI coding tools |
 
 ## How the list works
 
@@ -27,6 +27,11 @@ Each category README links its subcategories, and the leaf READMEs hold the actu
 - [Name](https://example.com) — what it does and why it matters. `type:tool` `free` `linux`
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full conventions.
+
+## Site and automation
+
+- The browsable site is published from these READMEs to GitHub Pages by CI — never edit the site directly.
+- A weekly GitHub Action checks every link with [lychee](https://github.com/lycheeverse/lychee), opens an issue with the broken ones, and refreshes the ★ count and last-update date shown on GitHub-linked entries.
 
 ## License
 

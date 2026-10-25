@@ -9,3 +9,8 @@ desktop.ini
 # Editors
 .vscode/
 .idea/
+
+# Generated site (source of truth: READMEs + scripts/build_site.py)
+docs/
+site/
+scripts/__pycache__/
