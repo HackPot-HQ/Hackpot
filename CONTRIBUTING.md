@@ -1,0 +1,42 @@
+# Contributing to Hackpot
+
+Hackpot is a curated, category-first index of penetration-testing resources. This guide keeps the list consistent as it grows.
+
+## Where things live
+
+- `NN_Domain_Name/README.md` — top-level category, numbered and `Title_Cased_With_Underscores`.
+- `NN_Domain_Name/Sub_Category/README.md` — leaf category that holds the actual entries.
+- Each leaf README has a `## Resources` section. That is where entries go.
+
+## Entry format
+
+One bullet per resource:
+
+```markdown
+- [Name](https://canonical-url) — What it does and why it matters. `type:tool` `free` `linux`
+```
+
+Rules:
+
+- Entries are alphabetical by display name within `## Resources`.
+- One line per entry. Say why it is useful, not only what it is.
+- Link the canonical source (project page, repository, docs) — not mirrors or forks.
+- Tags are optional but encouraged:
+  - Type: ``type:tool``, `type:course`, `type:docs`, `type:wordlist`, `type:lab`, `type:article`, `type:video`
+  - Cost: `free`, `paid`, `freemium`
+  - Platform or tech as needed: `linux`, `windows`, `aws`, `gdb`, ...
+
+## What qualifies
+
+- Publicly accessible and security-relevant.
+- Actively maintained, or a classic that is still used on real engagements.
+- Dead links and archived projects get removed or clearly tagged as such.
+- List a resource in one leaf only; do not duplicate across subcategories.
+
+## Adding categories
+
+Open an issue first so we can agree on scope and placement. Top-level categories are numbered `NN_Name`; keep the existing folder naming convention.
+
+## License
+
+By contributing, you agree that your contributions are licensed under the GPL-3.0-only license (see [LICENSE](LICENSE)).

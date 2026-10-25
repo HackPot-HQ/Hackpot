@@ -1,0 +1,11 @@
+# Local tooling state
+.atl/
+
+# OS cruft
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors
+.vscode/
+.idea/
