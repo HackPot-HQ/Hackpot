@@ -2,8 +2,9 @@
 
 Usage: python scripts/links_issue_body.py <lychee-report.json> <out.md>
 Prints one tri-state sentinel: 'broken' (body written), 'healthy' (clean scan),
-or 'unknown' (unreadable or schema-drifted report — callers must not close
-issues and should fail loudly).
+or 'unknown' (unreadable, schema-drifted, or evidence-less report — callers
+must not close issues and should fail loudly). 'healthy' is printed only with
+positive evidence that links were scanned successfully.
 
 Supported report shapes:
 - lychee's --format json stats: *_map dicts keyed by source ('error_map',
@@ -15,7 +16,7 @@ import json
 import os
 import sys
 
-FAILURE_MAPS = ("error_map", "timeout_map")
+FAILURE_MAPS = ("error_map", "timeout_map", "fail_map")
 
 
 def _status_text(result):
@@ -88,21 +89,30 @@ def main():
     if not isinstance(report, dict):
         unknown("Report is not a JSON object.")
 
-    map_schema = any(isinstance(report.get(k), dict) for k in FAILURE_MAPS) \
-        or isinstance(report.get("success_map"), dict)
-    if map_schema:
-        if not isinstance(report.get("success_map"), dict) \
-                and not isinstance(report.get("total"), dict):
-            unknown("Failure maps present without 'success_map'/'total' scan evidence.")
+    map_schema = all(isinstance(report.get(k), dict) for k in ("success_map", "error_map", "timeout_map"))
+    legacy_map_schema = all(isinstance(report.get(k), dict) for k in ("success_map", "fail_map"))
+    if map_schema or legacy_map_schema:
         failures = flatten_map_schema(report)
+        if failures:
+            pass
+        elif report.get("success_map") or (
+            isinstance(report.get("total"), dict)
+            and isinstance(report["total"].get("successful"), int)
+            and report["total"]["successful"] > 0
+        ):
+            print("healthy")
+            sys.exit(0)
+        else:
+            unknown("Attested schema but no positive scan evidence (zero or hidden successes).")
     elif isinstance(report.get("failures"), list):
         failures = [normalize(item) for item in report["failures"]]
+        if not failures:
+            if isinstance(report.get("successes"), list) and report["successes"]:
+                print("healthy")
+                sys.exit(0)
+            unknown("Empty failures list without positive 'successes' evidence.")
     else:
         unknown("Report matches neither the lychee map schema nor a failures list.")
-
-    if not failures:
-        print("healthy")
-        sys.exit(0)
 
     run_url = ""
     server = os.environ.get("GITHUB_SERVER_URL", "https://github.com")

@@ -36,6 +36,7 @@ jobs:
       - name: Build issue body
         id: report
         run: |
+          python scripts/test_links_issue_body.py
           state="$(CHECK_DATE="$(date -u +%F)" python scripts/links_issue_body.py lychee-report.json broken-links-report.md)"
           echo "state=$state" >> "$GITHUB_OUTPUT"
           echo "Link check state: $state"
