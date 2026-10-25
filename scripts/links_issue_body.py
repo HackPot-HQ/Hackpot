@@ -4,44 +4,73 @@ Usage: python scripts/links_issue_body.py <lychee-report.json> <out.md>
 Prints one tri-state sentinel: 'broken' (body written), 'healthy' (clean scan),
 or 'unknown' (unreadable or schema-drifted report — callers must not close
 issues and should fail loudly).
+
+Supported report shapes:
+- lychee's --format json stats: *_map dicts keyed by source ('error_map',
+  'timeout_map' hold failures; 'success_map'/'total' prove the scan ran).
+- a plain {'failures': [...], 'successes': [...]} object (older/other tools).
 """
 
 import json
 import os
 import sys
 
+FAILURE_MAPS = ("error_map", "timeout_map")
+
+
+def _status_text(result):
+    status = result.get("status")
+    if isinstance(status, dict):
+        text = status.get("text") or ""
+        code = status.get("code")
+        return f"{text} ({code})".strip() if code else str(text)
+    return str(status or result.get("error") or result.get("reason") or "")
+
+
+def flatten_map_schema(report):
+    """(url, source, error) triples from lychee's map-shaped JSON."""
+    triples = []
+    for key in FAILURE_MAPS:
+        data = report.get(key)
+        if not isinstance(data, dict):
+            continue
+        for source, results in data.items():
+            if isinstance(results, dict):
+                results = list(results.values())
+            elif not isinstance(results, (list, tuple)):
+                results = [results]
+            for result in results:
+                if isinstance(result, dict):
+                    triples.append((str(result.get("url", "")), str(source),
+                                    _status_text(result)))
+                elif result:
+                    triples.append((str(result), str(source), ""))
+    return triples
+
 
 def normalize(entry):
-    """Extract (url, source, error) from one lychee failure record, defensively."""
+    """Extract (url, source, error) from one failure record of the list shape."""
     if isinstance(entry, str):
         return entry, "", ""
     if isinstance(entry, dict):
         if "url" in entry:
             source = entry.get("source") or {}
             path = source.get("path", "") if isinstance(source, dict) else str(source)
-            error = (
-                entry.get("error")
-                or entry.get("reason")
-                or entry.get("status")
-                or entry.get("context")
-                or ""
-            )
-            return entry["url"], str(path), str(error)
+            return entry["url"], str(path), _status_text(entry)
         if len(entry) == 1:
             (url, info), = entry.items()
             if isinstance(info, dict):
                 source = info.get("source") or {}
                 path = source.get("path", "") if isinstance(source, dict) else str(source)
-                error = (
-                    info.get("error")
-                    or info.get("reason")
-                    or info.get("status")
-                    or info.get("context")
-                    or ""
-                )
-                return str(url), str(path), str(error)
+                return str(url), str(path), _status_text(info)
             return str(url), "", str(info)
     return str(entry), "", ""
+
+
+def unknown(reason):
+    print(reason, file=sys.stderr)
+    print("unknown")
+    sys.exit(0)
 
 
 def main():
@@ -54,32 +83,25 @@ def main():
         with open(report_path, encoding="utf-8-sig") as handle:
             report = json.load(handle)
     except (OSError, ValueError) as error:
-        print(f"Could not read lychee report: {error}", file=sys.stderr)
-        print("unknown")
-        sys.exit(0)
+        unknown(f"Could not read lychee report: {error}")
 
-    if not isinstance(report, dict) or "failures" not in report:
-        # Missing key or schema drift: never interpret as healthy.
-        print("Report lacks expected 'failures' key.", file=sys.stderr)
-        print("unknown")
-        sys.exit(0)
+    if not isinstance(report, dict):
+        unknown("Report is not a JSON object.")
 
-    raw = report["failures"]
-    if isinstance(raw, dict):
-        raw = [{url: info} for url, info in raw.items()]
-    if not isinstance(raw, list):
-        print("unexpected 'failures' type", file=sys.stderr)
-        print("unknown")
-        sys.exit(0)
-    failures = [normalize(item) for item in raw]
+    map_schema = any(isinstance(report.get(k), dict) for k in FAILURE_MAPS) \
+        or isinstance(report.get("success_map"), dict)
+    if map_schema:
+        if not isinstance(report.get("success_map"), dict) \
+                and not isinstance(report.get("total"), dict):
+            unknown("Failure maps present without 'success_map'/'total' scan evidence.")
+        failures = flatten_map_schema(report)
+    elif isinstance(report.get("failures"), list):
+        failures = [normalize(item) for item in report["failures"]]
+    else:
+        unknown("Report matches neither the lychee map schema nor a failures list.")
 
     if not failures:
-        # Healthy only with positive schema evidence, never by absence of data.
-        if isinstance(report.get("successes"), list):
-            print("healthy")
-        else:
-            print("Empty failures without 'successes' evidence.", file=sys.stderr)
-            print("unknown")
+        print("healthy")
         sys.exit(0)
 
     run_url = ""

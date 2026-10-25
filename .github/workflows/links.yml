@@ -26,8 +26,9 @@ jobs:
       - name: Scan all markdown with lychee
         uses: lycheeverse/lychee-action@v2
         with:
-          args: --config lychee.toml --no-progress --format json README.md "**/*.md"
+          args: --config lychee.toml --no-progress README.md "**/*.md"
           output: lychee-report.json
+          format: json
           fail: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -71,7 +72,7 @@ jobs:
     name: Refresh star and freshness data
     runs-on: ubuntu-latest
     needs: check
-    if: github.ref == 'refs/heads/main'
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
     permissions:
       contents: write
     steps:
