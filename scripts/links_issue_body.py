@@ -1,7 +1,9 @@
 """Turn a lychee JSON report into a GitHub issue body.
 
 Usage: python scripts/links_issue_body.py <lychee-report.json> <out.md>
-Prints 'true' (broken links found, body written) or 'false' (all healthy).
+Prints one tri-state sentinel: 'broken' (body written), 'healthy' (clean scan),
+or 'unknown' (unreadable or schema-drifted report — callers must not close
+issues and should fail loudly).
 """
 
 import json
@@ -48,22 +50,36 @@ def main():
         sys.exit(2)
     report_path, out_path = sys.argv[1], sys.argv[2]
 
-    failures = []
     try:
         with open(report_path, encoding="utf-8-sig") as handle:
             report = json.load(handle)
-        raw = report.get("failures", []) if isinstance(report, dict) else []
-        if isinstance(raw, dict):
-            raw = [{url: info} for url, info in raw.items()]
-        for item in raw:
-            failures.append(normalize(item))
     except (OSError, ValueError) as error:
         print(f"Could not read lychee report: {error}", file=sys.stderr)
-        print("false")
+        print("unknown")
         sys.exit(0)
 
+    if not isinstance(report, dict) or "failures" not in report:
+        # Missing key or schema drift: never interpret as healthy.
+        print("Report lacks expected 'failures' key.", file=sys.stderr)
+        print("unknown")
+        sys.exit(0)
+
+    raw = report["failures"]
+    if isinstance(raw, dict):
+        raw = [{url: info} for url, info in raw.items()]
+    if not isinstance(raw, list):
+        print("unexpected 'failures' type", file=sys.stderr)
+        print("unknown")
+        sys.exit(0)
+    failures = [normalize(item) for item in raw]
+
     if not failures:
-        print("false")
+        # Healthy only with positive schema evidence, never by absence of data.
+        if isinstance(report.get("successes"), list):
+            print("healthy")
+        else:
+            print("Empty failures without 'successes' evidence.", file=sys.stderr)
+            print("unknown")
         sys.exit(0)
 
     run_url = ""
@@ -96,7 +112,7 @@ def main():
 
     with open(out_path, "w", encoding="utf-8") as handle:
         handle.write("\n".join(lines))
-    print("true")
+    print("broken")
 
 
 if __name__ == "__main__":

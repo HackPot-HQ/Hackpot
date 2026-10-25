@@ -26,7 +26,7 @@ jobs:
       - name: Scan all markdown with lychee
         uses: lycheeverse/lychee-action@v2
         with:
-          args: --config lychee.toml --no-progress README.md "**/*.md"
+          args: --config lychee.toml --no-progress --format json README.md "**/*.md"
           output: lychee-report.json
           fail: false
         env:
@@ -35,21 +35,26 @@ jobs:
       - name: Build issue body
         id: report
         run: |
-          broken="$(CHECK_DATE="$(date -u +%F)" python scripts/links_issue_body.py lychee-report.json broken-links-report.md)"
-          echo "broken=$broken" >> "$GITHUB_OUTPUT"
-          echo "Broken links found: $broken"
+          state="$(CHECK_DATE="$(date -u +%F)" python scripts/links_issue_body.py lychee-report.json broken-links-report.md)"
+          echo "state=$state" >> "$GITHUB_OUTPUT"
+          echo "Link check state: $state"
 
       - name: Sync broken-links issue
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          state="${{ steps.report.outputs.state }}"
+          if [ "$state" = "unknown" ]; then
+            echo "::error::Link report missing, unreadable, or schema-drifted. Issues left untouched."
+            exit 1
+          fi
           gh label create broken-links --color "B60205" \
             --description "URLs reported unreachable by the weekly CI link check" \
             --force 2>/dev/null || true
           open="$(gh issue list --label broken-links --state open --json number \
             --jq '[.[].number] | join(" ")')"
-          if [ "${{ steps.report.outputs.broken }}" = "true" ]; then
+          if [ "$state" = "broken" ]; then
             for n in $open; do
               gh issue close "$n" --comment "Superseded by the latest weekly link report."
             done
