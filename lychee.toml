@@ -1,0 +1,15 @@
+# lychee configuration for the weekly link check
+# https://github.com/lycheeverse/lychee
+
+verbose = "info"
+timeout = 15
+max_redirects = 5
+concurrency = 16
+root = "."
+
+exclude = [
+  'mailto:',
+  '^https://img\.shields\.io/',
+  '^https://api\.shields\.badge\.shields\.io/',
+]
+exclude_path = [".git/*", "docs/*", "site/*"]

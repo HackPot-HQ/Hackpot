@@ -1,0 +1,95 @@
+name: Weekly link check
+
+on:
+  schedule:
+    # Mondays ~05:17 UTC (off-peak minute to avoid scheduled-cron congestion)
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check links
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Scan all markdown with lychee
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: --config lychee.toml --no-progress README.md "**/*.md"
+          output: lychee-report.json
+          fail: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build issue body
+        id: report
+        run: |
+          broken="$(CHECK_DATE="$(date -u +%F)" python scripts/links_issue_body.py lychee-report.json broken-links-report.md)"
+          echo "broken=$broken" >> "$GITHUB_OUTPUT"
+          echo "Broken links found: $broken"
+
+      - name: Sync broken-links issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh label create broken-links --color "B60205" \
+            --description "URLs reported unreachable by the weekly CI link check" \
+            --force 2>/dev/null || true
+          open="$(gh issue list --label broken-links --state open --json number \
+            --jq '[.[].number] | join(" ")')"
+          if [ "${{ steps.report.outputs.broken }}" = "true" ]; then
+            for n in $open; do
+              gh issue close "$n" --comment "Superseded by the latest weekly link report."
+            done
+            gh issue create --label broken-links \
+              --title "Broken links — $(date -u +%F)" \
+              --body-file broken-links-report.md
+          elif [ -n "$open" ]; then
+            for n in $open; do
+              gh issue close "$n" --comment "Weekly check found all links healthy — closing automatically."
+            done
+          fi
+
+  metadata:
+    name: Refresh star and freshness data
+    runs-on: ubuntu-latest
+    needs: check
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Fetch GitHub repository metadata
+        run: python scripts/resource_meta.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit metadata
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add meta/resources-meta.json
+          if ! git diff --staged --quiet; then
+            git commit -m "chore(links): refresh resource metadata"
+            git push
+          else
+            echo "Metadata unchanged."
+          fi
