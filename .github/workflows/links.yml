@@ -2,8 +2,8 @@ name: Weekly link check
 
 on:
   schedule:
-    # Mondays ~05:17 UTC (off-peak minute to avoid scheduled-cron congestion)
-    - cron: "17 5 * * 1"
+    # Fridays ~05:17 UTC (off-peak minute to avoid scheduled-cron congestion)
+    - cron: "17 5 * * 5"
   workflow_dispatch:
 
 permissions:
