@@ -26,14 +26,14 @@ jobs:
           cache: pip
           cache-dependency-path: requirements-site.txt
 
-      - name: Install mkdocs-material
+      - name: Install zensical
         run: pip install -r requirements-site.txt
 
       - name: Generate docs from READMEs
         run: python scripts/build_site.py
 
       - name: Build site
-        run: python -m mkdocs build --strict -f docs/mkdocs.yml -d "$GITHUB_WORKSPACE/site"
+        run: zensical build --strict -f mkdocs.yml
 
       - uses: actions/configure-pages@v5
 

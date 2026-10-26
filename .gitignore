@@ -1,5 +1,6 @@
 # Local tooling state
 .atl/
+odd
 
 # OS cruft
 .DS_Store
@@ -11,6 +12,7 @@ desktop.ini
 .idea/
 
 # Generated site (source of truth: READMEs + scripts/build_site.py)
+mkdocs.yml
 docs/
 site/
 scripts/__pycache__/
