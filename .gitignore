@@ -12,7 +12,7 @@ desktop.ini
 .idea/
 
 # Generated site (source of truth: READMEs + scripts/build_site.py)
-mkdocs.yml
+/mkdocs.yml
 docs/
 site/
 scripts/__pycache__/

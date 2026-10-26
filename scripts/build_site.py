@@ -27,6 +27,7 @@ CONTRIB_LINK_RE = re.compile(r"\]\(([^)#\s]*)CONTRIBUTING\.md\)")
 LICENSE_LINK_RE = re.compile(r"\[LICENSE\]\(LICENSE\)")
 LIST_ITEM_RE = re.compile(r"^\s*[-*] \[")
 TAG_TOKEN_RE = re.compile(r"`([^`\n]+)`")
+TAG_TYPE_PREFIX = "type:"
 FORMAT_COMMENT_RE = re.compile(r"^\s*<!--\s*Format:")
 CATEGORY_DIR_RE = re.compile(r"^\d{2}_")
 
@@ -108,8 +109,8 @@ def page_tags(text):
             continue
         for token in TAG_TOKEN_RE.findall(line):
             token = token.strip()
-            if token.startswith("type:"):
-                token = token[len("type:"):]
+            if token.startswith(TAG_TYPE_PREFIX):
+                token = token[len(TAG_TYPE_PREFIX):].strip()
             if token and token not in tags:
                 tags.append(token)
     return tags
@@ -119,7 +120,7 @@ def front_matter(tags):
     if not tags:
         return ""
     lines = ["---", "tags:"]
-    lines += [f'- "{tag}"' for tag in tags]
+    lines += [f"- {yaml_quote(tag)}" for tag in tags]
     lines.append("---")
     return "\n".join(lines) + "\n"
 
