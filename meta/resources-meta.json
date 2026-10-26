@@ -1,0 +1,20 @@
+{
+  "checked_at": "2026-10-26T01:48:57Z",
+  "rate_limited": false,
+  "repos": {
+    "JoasASantos/Offensive-Security-AI-Models": {
+      "default_branch": "main",
+      "last_update": "2026-09-28",
+      "not_found": false,
+      "pushed_at": "2026-09-28T14:34:47Z",
+      "stars": 735
+    },
+    "lycheeverse/lychee": {
+      "default_branch": "master",
+      "last_update": "2026-10-21",
+      "not_found": false,
+      "pushed_at": "2026-10-22T14:04:04Z",
+      "stars": 4045
+    }
+  }
+}
