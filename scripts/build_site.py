@@ -161,11 +161,16 @@ def page_title(path):
 
 
 # Nightshell theme (user-selected prototype P1, odd/tasks/docs-style-nightshell.md S2).
-# Fonts load from Google's CDN; swap to self-hosted woff2 for data-privacy if desired.
-THEME_CSS = """@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;600;700&display=swap');
-.md-typeset { font-family: "Inter", -apple-system, sans-serif; }
-.md-typeset h1, .md-typeset h2, .md-typeset h3 { font-family: "JetBrains Mono", monospace; letter-spacing: -0.02em; }
-.md-typeset code, .md-typeset pre { font-family: "JetBrains Mono", monospace; }
+# Fonts are self-hosted from assets/fonts/ (variable woff2, latin subset, OFL-
+# licensed); build copies that directory next to theme.css and theme.font=false
+# disables Zensical's Google Fonts autoloading. Applied via the documented
+# --md-text-font/--md-code-font variables so system fallback keeps working.
+THEME_FACES = """@font-face { font-family: "Inter"; font-style: normal; font-weight: 400 700; font-display: swap; src: url("fonts/inter-latin-var.woff2") format("woff2"); }
+@font-face { font-family: "JetBrains Mono"; font-style: normal; font-weight: 400 700; font-display: swap; src: url("fonts/jetbrains-mono-latin-var.woff2") format("woff2"); }
+:root { --md-text-font: "Inter"; --md-code-font: "JetBrains Mono"; }
+"""
+
+THEME_CSS = THEME_FACES + """.md-typeset h1, .md-typeset h2, .md-typeset h3 { font-family: "JetBrains Mono", var(--md-text-font-family, sans-serif); letter-spacing: -0.02em; }
 [data-md-color-scheme="slate"] { --md-default-bg-color: #0a0f14; --md-code-bg-color: #0d1520; --md-typeset-a-color: #34d399; }
 .md-banner { background: #052e16; color: #6ee7b7; font-family: "JetBrains Mono", monospace; font-size: .75em; }
 .hp-hero { background: linear-gradient(180deg, #020617, #052e16); border: 1px solid #10b98155; border-radius: 12px; padding: 2.2rem 2rem; margin: 1.5rem 0; color: #d1fae5; }
@@ -265,6 +270,10 @@ def build(out_dir, repo_url):
     styles = DOCS / "stylesheets"
     styles.mkdir(parents=True, exist_ok=True)
     (styles / "theme.css").write_text(THEME_CSS, encoding="utf-8")
+    # Self-hosted fonts (+ OFL license texts) ship with the site (S2 follow-up).
+    repo_fonts = ROOT / "assets" / "fonts"
+    if repo_fonts.is_dir():
+        shutil.copytree(repo_fonts, styles / "fonts", dirs_exist_ok=True)
 
     yaml_lines = [
         f"site_name: {yaml_quote('Hackpot — the jackpot of pentesting resources')}",
@@ -280,6 +289,7 @@ def build(out_dir, repo_url):
         "  variant: \"classic\"",
         "  custom_dir: \"docs/overrides\"",
         "  language: \"en\"",
+        "  font: false",
         "  features:",
         "    - \"navigation.sections\"",
         "    - \"navigation.top\"",

@@ -149,8 +149,27 @@ class NightshellTheme(unittest.TestCase):
         self.assertIn("extra_css:", self.yml)
         self.assertIn('"stylesheets/theme.css"', self.yml)
         css = (self.docs / "stylesheets" / "theme.css").read_text(encoding="utf-8")
-        self.assertIn("JetBrains+Mono", css)
+        self.assertIn('@font-face', css)
+        self.assertIn('url("fonts/inter-latin-var.woff2")', css)
+        self.assertIn('url("fonts/jetbrains-mono-latin-var.woff2")', css)
         self.assertIn(".hp-hero", css)
+        # S2 follow-up (user: "So the fonts are hosted on the repo"): no CDN.
+        self.assertNotIn("fonts.googleapis.com", css)
+        self.assertNotIn("fonts.gstatic.com", css)
+        self.assertIn("font: false", self.yml)  # stops Google Fonts autoloading
+        self.assertIn('--md-text-font: "Inter"', css)
+        self.assertIn('--md-code-font: "JetBrains Mono"', css)
+
+    def test_self_hosted_fonts_ship_with_the_site(self):
+        for name in ("inter-latin-var.woff2", "jetbrains-mono-latin-var.woff2"):
+            shipped = self.docs / "stylesheets" / "fonts" / name
+            source = build_site.ROOT / "assets" / "fonts" / name
+            self.assertTrue(source.is_file() and source.stat().st_size > 10_000,
+                            f"repo font asset missing: {name}")
+            self.assertEqual(shipped.read_bytes()[:4], b"wOF2", f"bad woff2: {name}")
+        for license_name in ("LICENSE-inter.txt", "LICENSE-jetbrains-mono.txt"):
+            text = (self.docs / "stylesheets" / "fonts" / license_name).read_text(encoding="utf-8")
+            self.assertIn("SIL Open Font License", text)
 
     def test_home_hero_injected_before_categories(self):
         home = (self.docs / "index.md").read_text(encoding="utf-8")
