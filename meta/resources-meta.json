@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-10-26T22:26:47Z",
+  "checked_at": "2026-10-26T23:24:36Z",
   "rate_limited": false,
   "repos": {
     "JoasASantos/Offensive-Security-AI-Models": {
@@ -14,7 +14,7 @@
       "last_update": "2026-10-24",
       "not_found": false,
       "pushed_at": "2026-10-24T18:34:39Z",
-      "stars": 3628
+      "stars": 3629
     },
     "d3vilbug/HackBar": {
       "default_branch": "master",
