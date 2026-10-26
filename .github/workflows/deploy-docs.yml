@@ -1,5 +1,8 @@
 name: Deploy site
 
+# Keep in sync with .github/workflows/site-check.yml (the PR-time twin of
+# these install/generate/build steps, minus the Pages permissions).
+
 on:
   push:
     branches: [main]

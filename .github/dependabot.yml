@@ -1,4 +1,6 @@
 version: 2
+# All schedule times are UTC. Both ecosystems share the Monday 06:00 slot
+# deliberately; if you change one, change the other.
 updates:
   # Weekly bump PRs for requirements-site.txt (zensical). Nothing merges
   # automatically: the site-build workflow gates each PR, humans merge.

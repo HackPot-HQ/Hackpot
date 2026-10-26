@@ -70,19 +70,22 @@ class PageTags(unittest.TestCase):
         cls.docs = cached_build()
 
     def test_controlled_tag_extraction_and_yaml_escaping(self):
-        # Hermetic unit for the tag pipeline: namespace stripping, dedupe,
-        # whitespace, empty values, and YAML-escaping of quote/backslash.
+        # Hermetic unit for the tag pipeline: namespace stripping (including
+        # a space after the prefix), dedupe, whitespace, empty values, and
+        # exact YAML-safe emission of quote/backslash-bearing tags.
         src = (
             "# T\n\n"
             "- [A](https://x.test/a) — a. `type:tool` ` free ` `dup` `dup`\n"
-            "- [B](https://x.test/b) — b. `type:` `wei\"rd` `back\\slash`\n"
+            "- [B](https://x.test/b) — b. `type:` `type: spaced` `wei\"rd` `back\\slash`\n"
             "Not a list item: `ignored`\n"
         )
         self.assertEqual(build_site.page_tags(src),
-                         ["tool", "free", "dup", 'wei"rd', "back\\slash"])
-        fm = build_site.front_matter(['wei"rd', "back\\slash"])
-        self.assertIn('\\"', fm)
-        self.assertIn('\\\\', fm)
+                         ["tool", "free", "dup", "spaced", 'wei"rd', "back\\slash"])
+        # Exact emission (not just "escape chars appear somewhere"): the
+        # document must be a tags list of properly escaped scalars.
+        self.assertEqual(
+            build_site.front_matter(['wei"rd', "back\\slash"]),
+            '---\ntags:\n- "wei\\"rd"\n- "back\\\\slash"\n---\n')
         self.assertEqual(build_site.front_matter([]), "")
 
     def test_leaf_pages_get_tags_front_matter_from_inline_tokens(self):

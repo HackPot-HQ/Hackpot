@@ -1,8 +1,10 @@
 name: Site check
 
-# Verification-only twin of the deploy build: runs the suite and the strict
-# Zensical build on PRs (e.g. Dependabot bumps) without any Pages permissions,
-# so a bad version bump shows red BEFORE merge instead of on deploy.
+# Verification-only twin of the deploy build in
+# .github/workflows/deploy-docs.yml: runs the suite and the strict Zensical
+# build on PRs (e.g. Dependabot bumps) without any Pages permissions, so a
+# bad version bump shows red BEFORE merge instead of on deploy. Keep the
+# install/generate/build steps in sync with that workflow.
 
 on:
   pull_request:
