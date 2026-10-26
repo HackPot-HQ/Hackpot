@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-10-26T01:48:57Z",
+  "checked_at": "2026-10-26T22:26:47Z",
   "rate_limited": false,
   "repos": {
     "JoasASantos/Offensive-Security-AI-Models": {
@@ -7,14 +7,28 @@
       "last_update": "2026-09-28",
       "not_found": false,
       "pushed_at": "2026-09-28T14:34:47Z",
-      "stars": 735
+      "stars": 739
+    },
+    "claration/impactor": {
+      "default_branch": "main",
+      "last_update": "2026-10-24",
+      "not_found": false,
+      "pushed_at": "2026-10-24T18:34:39Z",
+      "stars": 3628
+    },
+    "d3vilbug/HackBar": {
+      "default_branch": "master",
+      "last_update": "2021-04-15",
+      "not_found": false,
+      "pushed_at": "2021-04-15T11:26:55Z",
+      "stars": 1636
     },
     "lycheeverse/lychee": {
       "default_branch": "master",
-      "last_update": "2026-10-21",
+      "last_update": "2026-10-26",
       "not_found": false,
-      "pushed_at": "2026-10-22T14:04:04Z",
-      "stars": 4045
+      "pushed_at": "2026-10-26T15:26:21Z",
+      "stars": 4051
     }
   }
 }
