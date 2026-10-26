@@ -1,0 +1,38 @@
+name: Site check
+
+# Verification-only twin of the deploy build: runs the suite and the strict
+# Zensical build on PRs (e.g. Dependabot bumps) without any Pages permissions,
+# so a bad version bump shows red BEFORE merge instead of on deploy.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-site.txt
+
+      - name: Install zensical
+        run: pip install -r requirements-site.txt
+
+      - name: Run script tests
+        run: |
+          python scripts/test_build_site.py
+          python scripts/test_links_issue_body.py
+
+      - name: Generate docs from READMEs
+        run: python scripts/build_site.py
+
+      - name: Build site
+        run: zensical build --strict -f mkdocs.yml

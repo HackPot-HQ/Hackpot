@@ -1,0 +1,26 @@
+version: 2
+updates:
+  # Weekly bump PRs for requirements-site.txt (zensical). Nothing merges
+  # automatically: the site-build workflow gates each PR, humans merge.
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    commit-message:
+      prefix: "build(deps)"
+    labels:
+      - "dependencies"
+
+  # Keep the workflow actions themselves current for free.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - "dependencies"
