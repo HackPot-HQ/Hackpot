@@ -1,9 +1,10 @@
 """Generate the Hackpot GitHub Pages site from the README tree.
 
 The READMEs are the single source of truth: this script mirrors them into
-docs/ (git-ignored), rewrites relative links for mkdocs, injects star and
+docs/ (git-ignored), rewrites relative links for Zensical, injects star and
 freshness badges for GitHub repositories (from meta/resources-meta.json),
-and writes the mkdocs configuration. Run by .github/workflows/deploy-docs.yml.
+aggregates inline backtick tags into page front matter, and writes the
+site configuration. Run by .github/workflows/deploy-docs.yml.
 """
 
 import argparse
@@ -25,6 +26,7 @@ README_LINK_RE = re.compile(r"\]\(([^)#\s]*)README\.md\)")
 CONTRIB_LINK_RE = re.compile(r"\]\(([^)#\s]*)CONTRIBUTING\.md\)")
 LICENSE_LINK_RE = re.compile(r"\[LICENSE\]\(LICENSE\)")
 LIST_ITEM_RE = re.compile(r"^\s*[-*] \[")
+TAG_TOKEN_RE = re.compile(r"`([^`\n]+)`")
 FORMAT_COMMENT_RE = re.compile(r"^\s*<!--\s*Format:")
 CATEGORY_DIR_RE = re.compile(r"^\d{2}_")
 
@@ -66,7 +68,7 @@ def badge_suffix(line, meta):
         if not entry:
             continue
         if entry.get("not_found"):
-            return " · :warning: **repo not found**"
+            return " · \u26a0\ufe0f **repo not found**"
         parts = []
         if entry.get("stars") is not None:
             parts.append(f"**★ {format_stars(entry['stars'])}**")
@@ -94,10 +96,40 @@ def transform(text, meta, repo_url):
     return "\n".join(out_lines)
 
 
-def convert(source, dest, meta, repo_url):
+def page_tags(text):
+    """Unique tags from inline backtick tokens on list-item lines.
+
+    `type:tool`-style tokens contribute their value (tool); plain tokens
+    (free, osint, ...) are kept raw. Feeds Zensical's native tags plugin so
+    entries' tags are searchable and filterable at page level (S2)."""
+    tags = []
+    for line in text.split("\n"):
+        if not LIST_ITEM_RE.match(line):
+            continue
+        for token in TAG_TOKEN_RE.findall(line):
+            token = token.strip()
+            if token.startswith("type:"):
+                token = token[len("type:"):]
+            if token and token not in tags:
+                tags.append(token)
+    return tags
+
+
+def front_matter(tags):
+    if not tags:
+        return ""
+    lines = ["---", "tags:"]
+    lines += [f'- "{tag}"' for tag in tags]
+    lines.append("---")
+    return "\n".join(lines) + "\n"
+
+
+def convert(source, dest, meta, repo_url, tagged=False):
     text = source.read_text(encoding="utf-8")
     dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(transform(text, meta, repo_url) , encoding="utf-8")
+    body = transform(text, meta, repo_url)
+    prefix = front_matter(page_tags(body)) if tagged else ""
+    dest.write_text(prefix + body, encoding="utf-8")
     return dest.relative_to(DOCS).as_posix()
 
 
@@ -136,12 +168,12 @@ def build(out_dir, repo_url):
         cat_title = page_title(category_dir / "README.md")
         cat_nav = []
         cat_file = f"{category_dir.name}/index.md"
-        convert(category_dir / "README.md", DOCS / cat_file, meta, repo_url)
+        convert(category_dir / "README.md", DOCS / cat_file, meta, repo_url, tagged=True)
         cat_nav.append(("Overview", cat_file))
         for leaf_dir in sorted(p for p in category_dir.iterdir() if p.is_dir()):
             leaf_title = page_title(leaf_dir / "README.md")
             leaf_file = f"{category_dir.name}/{leaf_dir.name}/index.md"
-            convert(leaf_dir / "README.md", DOCS / leaf_file, meta, repo_url)
+            convert(leaf_dir / "README.md", DOCS / leaf_file, meta, repo_url, tagged=True)
             cat_nav.append((leaf_title, leaf_file))
         category_pages.append((f"{category_dir.name[:2]} · {cat_title}", cat_nav))
     nav.extend(category_pages)
@@ -164,7 +196,8 @@ def build(out_dir, repo_url):
 
     yaml_lines = [
         f"site_name: {yaml_quote('Hackpot — the jackpot of pentesting resources')}",
-        "docs_dir: \".\"",
+        f"docs_dir: {yaml_quote(DOCS.name)}",
+        "site_dir: \"site\"",
         "use_directory_urls: true",
     ]
     if repo_url:
@@ -172,16 +205,33 @@ def build(out_dir, repo_url):
         yaml_lines.append("edit_uri: \"\"")
     yaml_lines += [
         "theme:",
-        "  name: \"material\"",
-        "  custom_dir: \"overrides\"",
+        "  variant: \"classic\"",
+        "  custom_dir: \"docs/overrides\"",
         "  language: \"en\"",
         "  features:",
         "    - \"navigation.sections\"",
         "    - \"navigation.top\"",
         "    - \"navigation.footer\"",
         "    - \"toc.follow\"",
+        "    - \"search.highlight\"",
+        "  palette:",
+        "    - media: \"(prefers-color-scheme)\"",
+        "      toggle:",
+        "        icon: \"lucide/sun-moon\"",
+        "        name: \"Switch to light mode\"",
+        "    - media: \"(prefers-color-scheme: light)\"",
+        "      scheme: \"default\"",
+        "      toggle:",
+        "        icon: \"lucide/sun\"",
+        "        name: \"Switch to dark mode\"",
+        "    - media: \"(prefers-color-scheme: dark)\"",
+        "      scheme: \"slate\"",
+        "      toggle:",
+        "        icon: \"lucide/moon\"",
+        "        name: \"Switch to system preference\"",
         "plugins:",
         "  - search",
+        "  - tags",
         "markdown_extensions:",
         "  - toc:",
         "      permalink: true",
@@ -196,7 +246,9 @@ def build(out_dir, repo_url):
                 yaml_lines.append(
                     f"      - {yaml_quote(child_label)}: {yaml_quote(child_file)}"
                 )
-    (DOCS / "mkdocs.yml").write_text("\n".join(yaml_lines) + "\n", encoding="utf-8")
+    # Zensical requires site_dir within the project root (= config dir),
+    # so the config lives at the repo root, not inside docs/.
+    (DOCS.parent / "mkdocs.yml").write_text("\n".join(yaml_lines) + "\n", encoding="utf-8")
     print(f"Generated {sum(1 for _ in DOCS.rglob('*.md'))} pages into {DOCS}")
     print(f"Metadata checked_at: {checked_display}; "
           f"{len(meta.get('repos') or {})} repo entries loaded.")
