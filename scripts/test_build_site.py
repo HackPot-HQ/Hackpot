@@ -153,6 +153,10 @@ class NightshellTheme(unittest.TestCase):
         self.assertIn('url("fonts/inter-latin-var.woff2")', css)
         self.assertIn('url("fonts/jetbrains-mono-latin-var.woff2")', css)
         self.assertIn(".hp-hero", css)
+        # User-chosen hover prototype H1 "Soft Lift" (docs-style-nightshell L9)
+        self.assertIn("a.md-tag:hover { transform: translateY(-2px)", css)
+        self.assertIn("a.md-tag { transition:", css)
+        self.assertIn("a.md-tag:active", css)
         # S2 follow-up (user: "So the fonts are hosted on the repo"): no CDN.
         self.assertNotIn("fonts.googleapis.com", css)
         self.assertNotIn("fonts.gstatic.com", css)

@@ -183,6 +183,9 @@ THEME_CSS = THEME_FACES + """.md-typeset h1, .md-typeset h2, .md-typeset h3 { fo
 .hp-chips span { font-family: "JetBrains Mono", monospace; font-size: .72rem; padding: .25rem .7rem; border-radius: 999px; background: #064e3b; color: #6ee7b7; border: 1px solid #10b98144; }
 .md-tag { background: #022c22 !important; color: #6ee7b7 !important; border: 1px solid #10b98155; border-radius: 999px; font-family: "JetBrains Mono", monospace; }
 [data-md-color-scheme="default"] .md-tag { background: #d1fae5 !important; color: #065f46 !important; border-color: #10b98155; }
+a.md-tag { transition: transform .15s ease, box-shadow .15s ease, filter .15s ease; }
+a.md-tag:hover { transform: translateY(-2px); box-shadow: 0 4px 14px #10b9813d !important; filter: brightness(1.12); }
+a.md-tag:active { transform: translateY(0); box-shadow: 0 1px 4px #10b98133 !important; }
 .md-content table { border-radius: 10px; overflow: hidden; }
 .md-content tbody tr:hover { background: #0596690f; }
 """
