@@ -1,12 +1,29 @@
 name: Deploy site
 
 # Keep in sync with .github/workflows/site-check.yml (the PR-time twin of
-# these install/generate/build steps, minus the Pages permissions).
+# these install/generate/build steps, minus the Pages permissions). The
+# workflow_run trigger below is deploy-only: a finished link check must publish,
+# a pull request must not.
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
+  # "Weekly link check" refreshes meta/resources-meta.json with a commit pushed
+  # by GITHUB_TOKEN, and such pushes never create a workflow run (GitHub's
+  # recursion guard; only workflow_dispatch and repository_dispatch are
+  # exempt). So the star/freshness data lands on main but the published site
+  # stays stale until some human pushes. This trigger closes that gap; a run
+  # started by workflow_run always uses the last commit on the default branch.
+  #
+  # Deliberately not gated on the link check's conclusion: its metadata job runs
+  # even when the scan job fails (if: !cancelled()), so a red link check may
+  # still have pushed new metadata. Redeploying main unchanged is cheap; a
+  # silently stale site is not.
+  workflow_run:
+    workflows: ["Weekly link check"]
+    types: [completed]
+    branches: [main]
 
 permissions:
   contents: read
