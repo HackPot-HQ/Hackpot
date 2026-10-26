@@ -88,23 +88,19 @@ class PageTags(unittest.TestCase):
             '---\ntags:\n- "wei\\"rd"\n- "back\\\\slash"\n---\n')
         self.assertEqual(build_site.front_matter([]), "")
 
-    def test_leaf_pages_get_tags_front_matter_from_inline_tokens(self):
-        # S2: inline backtick tokens become page-level tags for the native
-        # tags plugin (searchable + filterable in Zensical search).
-        leaf = None
+    def test_leaf_pages_get_tags_front_matter_from_source_tokens(self):
+        # S2: tokens in source READMEs become page-level tags. Since S3 strips
+        # inline tokens from generated bodies, discovery goes via front matter.
+        tagged = None
         for p in self.docs.rglob("index.md"):
             if p.parent == self.docs:
                 continue
             text = p.read_text(encoding="utf-8")
-            if "`type:tool`" in text or "`type:docs`" in text:
-                leaf = p
+            if text.startswith("---\ntags:\n"):
+                tagged = p
                 break
-        self.assertIsNotNone(leaf, "no leaf page with tagged entries found")
-        text = leaf.read_text(encoding="utf-8")
-        self.assertTrue(text.startswith("---\n"), "expected YAML front matter")
-        front = text.split("---", 2)[1]
-        self.assertIn("tags:", front)
-        # type: namespace stripped to real values, free tags kept raw.
+        self.assertIsNotNone(tagged, "no page with tags front matter found")
+        front = tagged.read_text(encoding="utf-8").split("---\n", 2)[1]
         self.assertRegex(front, r"(?m)- \"(tool|docs)\"")
 
     def test_home_and_contributing_have_no_front_matter(self):
@@ -134,6 +130,86 @@ class Badges(unittest.TestCase):
         out = build_site.transform(src, {}, "https://github.com/J0nan/Hackpot")
         self.assertIn("- [HackBar](https://github.com/d3vilbug/HackBar)", out)
         self.assertIn("`type:tool`", out)
+
+
+class NightshellTheme(unittest.TestCase):
+    # S2: the chosen P1 "Nightshell" prototype must be what the generator emits.
+    @classmethod
+    def setUpClass(cls):
+        cls.docs = cached_build()
+        cls.yml = (cls.docs.parent / "mkdocs.yml").read_text(encoding="utf-8")
+
+    def test_palette_custom_emerald_schemes(self):
+        self.assertIn('primary: "#047857"', self.yml)
+        self.assertIn('accent: "#10b981"', self.yml)
+        self.assertIn('primary: "#022c22"', self.yml)
+        self.assertIn('accent: "#34d399"', self.yml)
+
+    def test_extra_css_and_theme_file_emitted(self):
+        self.assertIn("extra_css:", self.yml)
+        self.assertIn('"stylesheets/theme.css"', self.yml)
+        css = (self.docs / "stylesheets" / "theme.css").read_text(encoding="utf-8")
+        self.assertIn("JetBrains+Mono", css)
+        self.assertIn(".hp-hero", css)
+
+    def test_home_hero_injected_before_categories(self):
+        home = (self.docs / "index.md").read_text(encoding="utf-8")
+        self.assertIn("hp-hero", home)
+        self.assertIn("./jackpot --catalog all", home)
+        self.assertLess(home.index("hp-hero"), home.index("## Categories"))
+
+    def test_tags_hub_page_emitted_and_in_nav(self):
+        hub = (self.docs / "tags.md").read_text(encoding="utf-8")
+        self.assertIn("<!-- material/tags -->", hub)
+        self.assertIn('"Tags": "tags.md"', self.yml)
+
+
+class TagDedupe(unittest.TestCase):
+    # S3: entry pages show tags ONLY as footer bubbles.
+    @classmethod
+    def setUpClass(cls):
+        cls.docs = cached_build()
+
+    def test_generated_tagged_pages_have_no_residue_tag_tokens(self):
+        checked = 0
+        for p in self.docs.rglob("index.md"):
+            text = p.read_text(encoding="utf-8")
+            if not text.startswith("---\n"):
+                continue  # home/contributing keep their prose untouched
+            body = text.split("---\n", 2)[2]
+            self.assertEqual(build_site.page_tags(body), [],
+                             f"tag tokens still inline in {p}")
+            checked += 1
+        self.assertGreaterEqual(checked, 1, "expected at least one tagged page")
+        # entry bullets themselves survive (names stay searchable)
+        leaf = self.docs / "08_Web_Application" / "Vulnerability_Specific" / "index.md"
+        self.assertIn("[HackBar]", leaf.read_text(encoding="utf-8"))
+
+    def test_transform_unit_strip_only_removes_tokens(self):
+        src = "- [X](https://x.test) — does things. `type:tool` `free`\n"
+        kept = build_site.transform(src, {}, None)
+        self.assertIn("`type:tool`", kept)  # old behavior intact by default
+        stripped = build_site.transform(src, {}, None, drop_tag_tokens=True)
+        self.assertEqual(stripped, "- [X](https://x.test) — does things.\n")
+
+    def test_strip_keeps_inline_code_in_description(self):
+        # Only the TRAILING tag run is removed; inline code in the prose stays.
+        src = "- [X](https://x.test) — uses `nmap` scripts. `type:tool` `free`\n"
+        stripped = build_site.transform(src, {}, None, drop_tag_tokens=True)
+        self.assertEqual(stripped, "- [X](https://x.test) — uses `nmap` scripts.\n")
+
+    def test_fenced_example_bullets_are_untouched(self):
+        # Doc examples inside ``` fences keep their literal tag tokens.
+        src = (
+            "- [X](https://x.test) — real entry. `free`\n\n"
+            "```markdown\n"
+            "- [Name](https://example.com) — what it does. `type:tool` `free`\n"
+            "```\n"
+        )
+        out = build_site.transform(src, {}, None, drop_tag_tokens=True)
+        self.assertIn(
+            "- [Name](https://example.com) — what it does. `type:tool` `free`", out)
+        self.assertIn("- [X](https://x.test) — real entry.\n", out)
 
 
 if __name__ == "__main__":

@@ -25,6 +25,9 @@ Rules:
   - Type: ``type:tool``, `type:course`, `type:docs`, `type:wordlist`, `type:lab`, `type:article`, `type:video`
   - Cost: `free`, `paid`, `freemium`
   - Platform or tech as needed: `linux`, `windows`, `aws`, `gdb`, ...
+  - On the website the trailing tokens render as clickable tag bubbles at the
+    page bottom (and in a whole-site tag index at Tags), not inside the entry
+    text — keep writing them exactly as above.
 - Do **not** add star counts, popularity badges, or "last updated" notes manually: CI appends them automatically on the site for entries linking a GitHub repository.
 
 ## License

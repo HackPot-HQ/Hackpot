@@ -79,9 +79,21 @@ def badge_suffix(line, meta):
     return ""
 
 
-def transform(text, meta, repo_url):
+TRAILING_TAGS_RE = re.compile(r"(?:\s*\x60[^\x60\n]+\x60)+\s*$")
+
+
+def strip_trailing_tags(line):
+    """Drop the trailing tag-token run of an entry line, keeping any inline
+    code inside the description (tags are always last per CONTRIBUTING)."""
+    return TRAILING_TAGS_RE.sub("", line).rstrip()
+
+
+def transform(text, meta, repo_url, drop_tag_tokens=False):
     out_lines = []
+    in_fence = False
     for line in text.split("\n"):
+        if line.lstrip().startswith("```"):
+            in_fence = not in_fence
         if FORMAT_COMMENT_RE.match(line):
             continue
         line = README_LINK_RE.sub(r"](\1index.md)", line)
@@ -91,7 +103,12 @@ def transform(text, meta, repo_url):
                 line = line.replace("[LICENSE](LICENSE)", f"[LICENSE]({repo_url}/blob/main/LICENSE)")
             else:
                 line = line.replace("[LICENSE](LICENSE)", "`LICENSE`")
-        if LIST_ITEM_RE.match(line):
+        if LIST_ITEM_RE.match(line) and not in_fence:
+            if drop_tag_tokens:
+                # S3: tags render only as footer bubbles (from front matter),
+                # so the trailing tag tokens leave the entry text. Fenced
+                # example bullets (docs) are left completely untouched.
+                line = strip_trailing_tags(line)
             line = line.rstrip() + badge_suffix(line, meta)
         out_lines.append(line)
     return "\n".join(out_lines)
@@ -128,9 +145,9 @@ def front_matter(tags):
 def convert(source, dest, meta, repo_url, tagged=False):
     text = source.read_text(encoding="utf-8")
     dest.parent.mkdir(parents=True, exist_ok=True)
-    body = transform(text, meta, repo_url)
-    prefix = front_matter(page_tags(body)) if tagged else ""
-    dest.write_text(prefix + body, encoding="utf-8")
+    tags = page_tags(transform(text, meta, repo_url)) if tagged else []
+    body = transform(text, meta, repo_url, drop_tag_tokens=tagged)
+    dest.write_text(front_matter(tags) + body, encoding="utf-8")
     return dest.relative_to(DOCS).as_posix()
 
 
@@ -141,6 +158,49 @@ def yaml_quote(value):
 def page_title(path):
     first = path.read_text(encoding="utf-8").split("\n", 1)[0]
     return first.lstrip("#").strip() or path.parent.name.replace("_", " ")
+
+
+# Nightshell theme (user-selected prototype P1, odd/tasks/docs-style-nightshell.md S2).
+# Fonts load from Google's CDN; swap to self-hosted woff2 for data-privacy if desired.
+THEME_CSS = """@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;600;700&display=swap');
+.md-typeset { font-family: "Inter", -apple-system, sans-serif; }
+.md-typeset h1, .md-typeset h2, .md-typeset h3 { font-family: "JetBrains Mono", monospace; letter-spacing: -0.02em; }
+.md-typeset code, .md-typeset pre { font-family: "JetBrains Mono", monospace; }
+[data-md-color-scheme="slate"] { --md-default-bg-color: #0a0f14; --md-code-bg-color: #0d1520; --md-typeset-a-color: #34d399; }
+.md-banner { background: #052e16; color: #6ee7b7; font-family: "JetBrains Mono", monospace; font-size: .75em; }
+.hp-hero { background: linear-gradient(180deg, #020617, #052e16); border: 1px solid #10b98155; border-radius: 12px; padding: 2.2rem 2rem; margin: 1.5rem 0; color: #d1fae5; }
+.hp-hero .prompt { font-family: "JetBrains Mono", monospace; color: #34d399; font-size: .95rem; }
+.hp-hero .cursor::after { content: "\u258b"; animation: blink 1.1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.hp-hero h2 { color: #ecfdf5; margin: .6rem 0 .2rem; }
+.hp-hero p { color: #a7f3d0; }
+.hp-chips { margin-top: 1rem; display: flex; gap: .5rem; flex-wrap: wrap; }
+.hp-chips span { font-family: "JetBrains Mono", monospace; font-size: .72rem; padding: .25rem .7rem; border-radius: 999px; background: #064e3b; color: #6ee7b7; border: 1px solid #10b98144; }
+.md-tag { background: #022c22 !important; color: #6ee7b7 !important; border: 1px solid #10b98155; border-radius: 999px; font-family: "JetBrains Mono", monospace; }
+[data-md-color-scheme="default"] .md-tag { background: #d1fae5 !important; color: #065f46 !important; border-color: #10b98155; }
+.md-content table { border-radius: 10px; overflow: hidden; }
+.md-content tbody tr:hover { background: #0596690f; }
+"""
+
+HOME_HERO = """<div class="hp-hero">
+  <div class="prompt">root@hackpot:~$ ./jackpot --catalog all <span class="cursor"></span></div>
+  <h2>The jackpot of pentesting resources</h2>
+  <p>Category-first, curated, CI-verified. Tools, courses, wordlists, labs and reading — across the whole kill chain.</p>
+  <div class="hp-chips"><span>17 categories</span><span>weekly link checks</span><span>star &amp; freshness badges</span><span>search by name + tag</span></div>
+</div>
+
+"""
+
+# S4: the native tags plugin (adapted from Material's tags plugin) renders a
+# whole-site tag index at this marker, and turns each page's tags into links
+# that jump to their entry in it. Material's marker, not mkdocs-plugin-tags'.
+TAGS_PAGE = """# Tags
+
+Every tag used across the catalog. Pick one to filter the site —
+or filter search results by tag from the search bar.
+
+<!-- material/tags -->
+"""
 
 
 def build(out_dir, repo_url):
@@ -158,9 +218,17 @@ def build(out_dir, repo_url):
     nav = []
     convert(ROOT / "README.md", DOCS / "index.md", meta, repo_url)
     nav.append(("Home", "index.md"))
+    home = DOCS / "index.md"
+    home_text = home.read_text(encoding="utf-8")
+    if "## Categories" in home_text:
+        home.write_text(
+            home_text.replace("## Categories", HOME_HERO + "## Categories", 1),
+            encoding="utf-8")
     if (ROOT / "CONTRIBUTING.md").exists():
         convert(ROOT / "CONTRIBUTING.md", DOCS / "contributing.md", meta, repo_url)
         nav.append(("Contributing", "contributing.md"))
+    (DOCS / "tags.md").write_text(TAGS_PAGE, encoding="utf-8")
+    nav.append(("Tags", "tags.md"))
 
     category_pages = []
     for category_dir in sorted(
@@ -194,6 +262,9 @@ def build(out_dir, repo_url):
     overrides = DOCS / "overrides"
     overrides.mkdir(parents=True, exist_ok=True)
     (overrides / "main.html").write_text(banner, encoding="utf-8")
+    styles = DOCS / "stylesheets"
+    styles.mkdir(parents=True, exist_ok=True)
+    (styles / "theme.css").write_text(THEME_CSS, encoding="utf-8")
 
     yaml_lines = [
         f"site_name: {yaml_quote('Hackpot — the jackpot of pentesting resources')}",
@@ -222,14 +293,20 @@ def build(out_dir, repo_url):
         "        name: \"Switch to light mode\"",
         "    - media: \"(prefers-color-scheme: light)\"",
         "      scheme: \"default\"",
+        "      primary: \"#047857\"",
+        "      accent: \"#10b981\"",
         "      toggle:",
         "        icon: \"lucide/sun\"",
         "        name: \"Switch to dark mode\"",
         "    - media: \"(prefers-color-scheme: dark)\"",
         "      scheme: \"slate\"",
+        "      primary: \"#022c22\"",
+        "      accent: \"#34d399\"",
         "      toggle:",
         "        icon: \"lucide/moon\"",
         "        name: \"Switch to system preference\"",
+        "extra_css:",
+        "  - \"stylesheets/theme.css\"",
         "plugins:",
         "  - search",
         "  - tags",
