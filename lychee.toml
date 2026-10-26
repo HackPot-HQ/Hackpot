@@ -1,11 +1,14 @@
 # lychee configuration for the weekly link check
 # https://github.com/lycheeverse/lychee
-
+#
+# Key names track lychee's current config: `max_concurrency` and `root_dir`
+# replaced the old `concurrency`/`root` (lychee aborts with exit code 3 on an
+# unknown key, so a stale name means no JSON report at all).
 verbose = "info"
 timeout = 15
 max_redirects = 5
-concurrency = 16
-root = "."
+max_concurrency = 16
+root_dir = "."
 
 exclude = [
   'mailto:',

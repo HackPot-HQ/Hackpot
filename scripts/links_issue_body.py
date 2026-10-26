@@ -8,7 +8,10 @@ positive evidence that links were scanned successfully.
 
 Supported report shapes:
 - lychee's --format json stats: *_map dicts keyed by source ('error_map',
-  'timeout_map' hold failures; 'success_map'/'total' prove the scan ran).
+  'timeout_map' hold failures, and lychee fills them whether or not verbose is
+  on). Proof a scan actually ran is a non-empty 'success_map' or a positive
+  top-level 'successful' counter; v0.24.x only fills 'success_map' when
+  detailed stats are enabled.
 - a plain {'failures': [...], 'successes': [...]} object (older/other tools).
 """
 
@@ -68,6 +71,24 @@ def normalize(entry):
     return str(entry), "", ""
 
 
+def scan_evidence(report):
+    """Positive proof links were actually checked.
+
+    lychee v0.24.x counts results as top-level integers and only fills
+    'success_map' when detailed stats are on, so either one counts as evidence.
+    Older shapes nested the counts under a 'total' dict.
+    """
+    if report.get("success_map"):
+        return True
+    for key in ("successful", "success"):
+        if isinstance(report.get(key), int) and not isinstance(report.get(key), bool) \
+                and report[key] > 0:
+            return True
+    total = report.get("total")
+    return isinstance(total, dict) and isinstance(total.get("successful"), int) \
+        and total["successful"] > 0
+
+
 def unknown(reason):
     print(reason, file=sys.stderr)
     print("unknown")
@@ -95,11 +116,7 @@ def main():
         failures = flatten_map_schema(report)
         if failures:
             pass
-        elif report.get("success_map") or (
-            isinstance(report.get("total"), dict)
-            and isinstance(report["total"].get("successful"), int)
-            and report["total"]["successful"] > 0
-        ):
+        elif scan_evidence(report):
             print("healthy")
             sys.exit(0)
         else:
