@@ -60,8 +60,21 @@ def format_stars(count):
     return str(count)
 
 
+def format_date(iso):
+    """Render-only ISO YYYY-MM-DD -> DD-MM-YYYY; stored metadata stays ISO."""
+    match = re.match(r"(\d{4})-(\d{2})-(\d{2})", iso or "")
+    return f"{match.group(3)}-{match.group(2)}-{match.group(1)}" if match else (iso or "")
+
+
+STARS_BADGE = '<span class="hp-badge hp-badge--stars">\u2605 {}</span>'
+COMMIT_BADGE = '<span class="hp-badge hp-badge--commit">last commit {}</span>'
+BROKEN_BADGE = '<span class="hp-badge hp-badge--broken">\u26a0\ufe0f repo not found</span>'
+
+
 def badge_suffix(line, meta):
-    """Badge text for the first GitHub repo link in a list item, '' if none."""
+    """Badge text for the first GitHub repo link in a list item, '' if none.
+    Prototype P1 (yellow stars pills, user-chosen): theme-styled chip spans;
+    the palette lives in THEME_CSS so light/dark schemes are handled in CSS."""
     repos = meta.get("repos") or {}
     for url in GITHUB_URL_RE.findall(line):
         slug = github_slug(url)
@@ -69,13 +82,13 @@ def badge_suffix(line, meta):
         if not entry:
             continue
         if entry.get("not_found"):
-            return " · \u26a0\ufe0f **repo not found**"
+            return " " + BROKEN_BADGE
         parts = []
         if entry.get("stars") is not None:
-            parts.append(f"**★ {format_stars(entry['stars'])}**")
+            parts.append(STARS_BADGE.format(format_stars(entry["stars"])))
         if entry.get("last_update"):
-            parts.append(f"updated {entry['last_update']}")
-        return " · " + " · ".join(parts) if parts else ""
+            parts.append(COMMIT_BADGE.format(format_date(entry["last_update"])))
+        return (" " + " ".join(parts)) if parts else ""
     return ""
 
 
@@ -188,6 +201,14 @@ a.md-tag:hover { transform: translateY(-2px); box-shadow: 0 4px 14px #10b9813d !
 a.md-tag:active { transform: translateY(0); box-shadow: 0 1px 4px #10b98133 !important; }
 .md-content table { border-radius: 10px; overflow: hidden; }
 .md-content tbody tr:hover { background: #0596690f; }
+.hp-badge { display: inline-block; font-family: "JetBrains Mono", monospace; font-size: .72rem; padding: .18rem .6rem; border-radius: 999px; border: 1px solid transparent; white-space: nowrap; transition: transform .15s ease, box-shadow .15s ease; }
+.hp-badge:hover { transform: translateY(-1px); box-shadow: 0 3px 10px #10b9813d; }
+.hp-badge--stars { background: #78350f; color: #fde68a; border-color: #fbbf2466; }
+[data-md-color-scheme="default"] .hp-badge--stars { background: #f59e0b; color: #292002; border-color: #fbbf2466; }
+.hp-badge--commit { background: #022c22; color: #6ee7b7; border-color: #10b98155; }
+[data-md-color-scheme="default"] .hp-badge--commit { background: #d1fae5; color: #065f46; border-color: #10b98155; }
+.hp-badge--broken { background: #7f1d1d33; color: #fca5a5; border-color: #f8717155; }
+[data-md-color-scheme="default"] .hp-badge--broken { background: #fee2e2; color: #991b1b; border-color: #ef444455; }
 """
 
 HOME_HERO = """<div class="hp-hero">

@@ -119,10 +119,29 @@ class Badges(unittest.TestCase):
         self.assertIn("\u26a0\ufe0f", suffix)
         self.assertNotIn(":warning:", suffix)
 
-    def test_stars_suffix_unchanged(self):
+    def test_badges_render_pills_with_ddmm_date(self):
+        # User-chosen prototype P1 (odd/tasks/zensical-migration.md L9): stars
+        # pill in solid amber, commit pill in emerald, ISO date shown DD-MM-YYYY.
         meta = {"repos": {"owner/repo": {"stars": 12000, "last_update": "2026-10-01"}}}
         suffix = build_site.badge_suffix("[X](https://github.com/owner/repo) — x", meta)
-        self.assertEqual(suffix, " · **★ 12.0k** · updated 2026-10-01")
+        self.assertEqual(
+            suffix,
+            ' <span class="hp-badge hp-badge--stars">★ 12.0k</span>'
+            ' <span class="hp-badge hp-badge--commit">last commit 01-10-2026</span>')
+
+    def test_date_display_converts_iso_to_ddmm(self):
+        # Storage stays ISO (YYYY-MM-DD); only the rendered text flips to DD-MM-YYYY.
+        self.assertEqual(build_site.format_date("2026-10-01"), "01-10-2026")
+        self.assertEqual(build_site.format_date("2021-04-15"), "15-04-2021")
+        self.assertEqual(build_site.format_date("garbage"), "garbage")
+        self.assertEqual(build_site.format_date(None), "")
+
+    def test_no_stars_pill_when_stars_missing(self):
+        meta = {"repos": {"owner/repo": {"stars": None, "last_update": "2026-10-01"}}}
+        suffix = build_site.badge_suffix("[X](https://github.com/owner/repo) — x", meta)
+        self.assertEqual(
+            suffix,
+            ' <span class="hp-badge hp-badge--commit">last commit 01-10-2026</span>')
 
     def test_entry_lines_survive_transform(self):
         # Differential pin: content pages must keep their entry bullets.
@@ -163,6 +182,12 @@ class NightshellTheme(unittest.TestCase):
         self.assertIn("font: false", self.yml)  # stops Google Fonts autoloading
         self.assertIn('--md-text-font: "Inter"', css)
         self.assertIn('--md-code-font: "JetBrains Mono"', css)
+        # P1 yellow stars pills + emerald commit pill must ship in the CSS,
+        # including a light-scheme variant for the amber pill.
+        self.assertIn(".hp-badge--stars { background: #78350f; color: #fde68a;", css)
+        self.assertIn('[data-md-color-scheme="default"] .hp-badge--stars', css)
+        self.assertIn(".hp-badge--commit", css)
+        self.assertIn(".hp-badge--broken", css)
 
     def test_self_hosted_fonts_ship_with_the_site(self):
         for name in ("inter-latin-var.woff2", "jetbrains-mono-latin-var.woff2"):
