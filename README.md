@@ -14,7 +14,7 @@ Categories follow the kill chain: recon → initial access → foothold and oper
 | [02 · Social Engineering](02_Social_Engineering/README.md) | Phishing, vishing/smishing, and pretexting |
 | [03 · Physical Security](03_Physical_Security/README.md) | Locks, badges, and surveillance countermeasures |
 | [04 · Wireless and RF](04_Wireless_and_RF/README.md) | Wi-Fi, Bluetooth/BLE, Zigbee, and SDR |
-| [05 · Exploitation and Privilege Escalation](05_Exploitation_and_PrivEsc/README.md) | C2 and exploitation frameworks, Linux/macOS/Windows privesc |
+| [05 · Exploitation and Privilege Escalation](05_Exploitation_and_PrivEsc/README.md) | C2 and exploitation frameworks, CVE PoC aggregators, Linux/macOS/Windows privesc |
 | [06 · Red Team Operations](06_Red_Team_Operations/README.md) | AV/EDR evasion, C2 tradecraft, and living off the land |
 | [07 · Network and Infrastructure](07_Network_and_Infrastructure/README.md) | Active Directory, NAC, and packet analysis |
 | [08 · Web Application Hacking](08_Web_Application/README.md) | Proxies, scanners, APIs, bruteforcing, flaw-specific tools |
