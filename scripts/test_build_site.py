@@ -1,4 +1,4 @@
-"""Regression tests for scripts/build_site.py (S1-S5, odd/tasks/zensical-migration.md)."""
+"""Regression tests for scripts/build_site.py."""
 
 import pathlib
 import shutil
@@ -34,18 +34,18 @@ class EmittedConfig(unittest.TestCase):
         cls.yml = (cls.docs.parent / "mkdocs.yml").read_text(encoding="utf-8")
 
     def test_uses_zensical_variant_not_material_name(self):
-        # S1: Zensical replaces Material; variant classic keeps the current look.
+        # Zensical replaces Material; variant classic keeps the current look.
         self.assertIn('variant: "classic"', self.yml)
         self.assertNotIn('name: "material"', self.yml)
 
     def test_site_dir_in_config(self):
-        # S5: Zensical has no --site-dir, so site_dir must live in config,
+        # Zensical has no --site-dir, so site_dir must live in config,
         # within the project root.
         self.assertIn('site_dir: "site"', self.yml)
         self.assertIn('docs_dir: "docs"', self.yml)
 
     def test_search_and_tags_plugins(self):
-        # S1/S2: built-in search configured via the search entry; native tags plugin.
+        # Built-in search configured via the search entry; native tags plugin.
         self.assertRegex(self.yml, r"(?m)^\s*-\s*\"?search\"?\s*$")
         self.assertRegex(self.yml, r"(?m)^\s*-\s*\"?tags\"?\s*$")
 
@@ -53,7 +53,7 @@ class EmittedConfig(unittest.TestCase):
         self.assertIn('"search.highlight"', self.yml)
 
     def test_palette_emits_auto_light_dark_toggle(self):
-        # S3: dark and light themes with automatic system-preference mode.
+        # Dark and light themes with automatic system-preference mode.
         for needle in (
             'scheme: "default"',
             'scheme: "slate"',
@@ -89,8 +89,9 @@ class PageTags(unittest.TestCase):
         self.assertEqual(build_site.front_matter([]), "")
 
     def test_leaf_pages_get_tags_front_matter_from_source_tokens(self):
-        # S2: tokens in source READMEs become page-level tags. Since S3 strips
-        # inline tokens from generated bodies, discovery goes via front matter.
+        # Tokens in source READMEs become page-level tags. Since generated
+        # bodies have their inline tokens stripped, discovery goes via front
+        # matter.
         tagged = None
         for p in self.docs.rglob("index.md"):
             if p.parent == self.docs:
@@ -112,7 +113,7 @@ class PageTags(unittest.TestCase):
 
 class Badges(unittest.TestCase):
     def test_not_found_uses_literal_emoji(self):
-        # S1: no Material emoji shortcodes (:warning:) — Zensical must render
+        # No Material emoji shortcodes (:warning:) — Zensical must render
         # the warning without emoji-extension config.
         meta = {"repos": {"owner/repo": {"not_found": True}}}
         suffix = build_site.badge_suffix("[X](https://github.com/owner/repo) — x", meta)
@@ -120,8 +121,8 @@ class Badges(unittest.TestCase):
         self.assertNotIn(":warning:", suffix)
 
     def test_badges_render_pills_with_ddmm_date(self):
-        # User-chosen prototype P1 (odd/tasks/zensical-migration.md L9): stars
-        # pill in solid amber, commit pill in emerald, ISO date shown DD-MM-YYYY.
+        # Stars pill in solid amber, commit pill in emerald,
+        # ISO date shown DD-MM-YYYY.
         meta = {"repos": {"owner/repo": {"stars": 12000, "last_update": "2026-10-01"}}}
         suffix = build_site.badge_suffix("[X](https://github.com/owner/repo) — x", meta)
         self.assertEqual(
@@ -152,7 +153,7 @@ class Badges(unittest.TestCase):
 
 
 class NightshellTheme(unittest.TestCase):
-    # S2: the chosen P1 "Nightshell" prototype must be what the generator emits.
+    # The "Nightshell" theme is what the generator must emit.
     @classmethod
     def setUpClass(cls):
         cls.docs = cached_build()
@@ -172,17 +173,17 @@ class NightshellTheme(unittest.TestCase):
         self.assertIn('url("fonts/inter-latin-var.woff2")', css)
         self.assertIn('url("fonts/jetbrains-mono-latin-var.woff2")', css)
         self.assertIn(".hp-hero", css)
-        # User-chosen hover prototype H1 "Soft Lift" (docs-style-nightshell L9)
+        # "Soft Lift" hover style on tag chips.
         self.assertIn("a.md-tag:hover { transform: translateY(-2px)", css)
         self.assertIn("a.md-tag { transition:", css)
         self.assertIn("a.md-tag:active", css)
-        # S2 follow-up (user: "So the fonts are hosted on the repo"): no CDN.
+        # Fonts are hosted in the repo: no CDN.
         self.assertNotIn("fonts.googleapis.com", css)
         self.assertNotIn("fonts.gstatic.com", css)
         self.assertIn("font: false", self.yml)  # stops Google Fonts autoloading
         self.assertIn('--md-text-font: "Inter"', css)
         self.assertIn('--md-code-font: "JetBrains Mono"', css)
-        # P1 yellow stars pills + emerald commit pill must ship in the CSS,
+        # The yellow stars pill and emerald commit pill must ship in the CSS,
         # including a light-scheme variant for the amber pill.
         self.assertIn(".hp-badge--stars { background: #78350f; color: #fde68a;", css)
         self.assertIn('[data-md-color-scheme="default"] .hp-badge--stars', css)
@@ -213,7 +214,7 @@ class NightshellTheme(unittest.TestCase):
 
 
 class TagDedupe(unittest.TestCase):
-    # S3: entry pages show tags ONLY as footer bubbles.
+    # Entry pages show tags ONLY as footer bubbles.
     @classmethod
     def setUpClass(cls):
         cls.docs = cached_build()

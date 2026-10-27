@@ -8,7 +8,6 @@ site configuration. Run by .github/workflows/deploy-docs.yml.
 """
 
 import argparse
-import datetime
 import json
 import pathlib
 import re
@@ -73,8 +72,9 @@ BROKEN_BADGE = '<span class="hp-badge hp-badge--broken">\u26a0\ufe0f repo not fo
 
 def badge_suffix(line, meta):
     """Badge text for the first GitHub repo link in a list item, '' if none.
-    Prototype P1 (yellow stars pills, user-chosen): theme-styled chip spans;
-    the palette lives in THEME_CSS so light/dark schemes are handled in CSS."""
+
+    Badges are theme-styled chip spans; the palette lives in THEME_CSS so
+    light/dark schemes are handled in CSS."""
     repos = meta.get("repos") or {}
     for url in GITHUB_URL_RE.findall(line):
         slug = github_slug(url)
@@ -118,9 +118,9 @@ def transform(text, meta, repo_url, drop_tag_tokens=False):
                 line = line.replace("[LICENSE](LICENSE)", "`LICENSE`")
         if LIST_ITEM_RE.match(line) and not in_fence:
             if drop_tag_tokens:
-                # S3: tags render only as footer bubbles (from front matter),
-                # so the trailing tag tokens leave the entry text. Fenced
-                # example bullets (docs) are left completely untouched.
+                # Tags render only as footer bubbles (from front matter), so
+                # the trailing tag tokens leave the entry text. Fenced example
+                # bullets (docs) are left completely untouched.
                 line = strip_trailing_tags(line)
             line = line.rstrip() + badge_suffix(line, meta)
         out_lines.append(line)
@@ -132,7 +132,7 @@ def page_tags(text):
 
     `type:tool`-style tokens contribute their value (tool); plain tokens
     (free, osint, ...) are kept raw. Feeds Zensical's native tags plugin so
-    entries' tags are searchable and filterable at page level (S2)."""
+    entries' tags are searchable and filterable at page level."""
     tags = []
     for line in text.split("\n"):
         if not LIST_ITEM_RE.match(line):
@@ -173,11 +173,11 @@ def page_title(path):
     return first.lstrip("#").strip() or path.parent.name.replace("_", " ")
 
 
-# Nightshell theme (user-selected prototype P1, odd/tasks/docs-style-nightshell.md S2).
-# Fonts are self-hosted from assets/fonts/ (variable woff2, latin subset, OFL-
-# licensed); build copies that directory next to theme.css and theme.font=false
-# disables Zensical's Google Fonts autoloading. Applied via the documented
-# --md-text-font/--md-code-font variables so system fallback keeps working.
+# Nightshell theme: fonts are self-hosted from assets/fonts/ (variable woff2,
+# latin subset, OFL-licensed); build copies that directory next to theme.css
+# and theme.font=false disables Zensical's Google Fonts autoloading. Applied
+# via the --md-text-font/--md-code-font variables so system fallback keeps
+# working.
 THEME_FACES = """@font-face { font-family: "Inter"; font-style: normal; font-weight: 400 700; font-display: swap; src: url("fonts/inter-latin-var.woff2") format("woff2"); }
 @font-face { font-family: "JetBrains Mono"; font-style: normal; font-weight: 400 700; font-display: swap; src: url("fonts/jetbrains-mono-latin-var.woff2") format("woff2"); }
 :root { --md-text-font: "Inter"; --md-code-font: "JetBrains Mono"; }
@@ -220,7 +220,7 @@ HOME_HERO = """<div class="hp-hero">
 
 """
 
-# S4: the native tags plugin (adapted from Material's tags plugin) renders a
+# The native tags plugin (adapted from Material's tags plugin) renders a
 # whole-site tag index at this marker, and turns each page's tags into links
 # that jump to their entry in it. Material's marker, not mkdocs-plugin-tags'.
 TAGS_PAGE = """# Tags
@@ -294,7 +294,7 @@ def build(out_dir, repo_url):
     styles = DOCS / "stylesheets"
     styles.mkdir(parents=True, exist_ok=True)
     (styles / "theme.css").write_text(THEME_CSS, encoding="utf-8")
-    # Self-hosted fonts (+ OFL license texts) ship with the site (S2 follow-up).
+    # Self-hosted fonts and OFL license texts ship with the site.
     repo_fonts = ROOT / "assets" / "fonts"
     if repo_fonts.is_dir():
         shutil.copytree(repo_fonts, styles / "fonts", dirs_exist_ok=True)

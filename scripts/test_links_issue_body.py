@@ -1,7 +1,7 @@
 """Regression tests for scripts/links_issue_body.py (stdlib only, no runner needed).
 
 Run: python scripts/test_links_issue_body.py
-Covers the two escalated-review failure modes: false-healthy on evidence-less
+Covers the two safety failure modes: false-healthy on evidence-less
 reports, and schema drift never being read as 'healthy'.
 """
 

@@ -114,12 +114,10 @@ def main():
     legacy_map_schema = all(isinstance(report.get(k), dict) for k in ("success_map", "fail_map"))
     if map_schema or legacy_map_schema:
         failures = flatten_map_schema(report)
-        if failures:
-            pass
-        elif scan_evidence(report):
-            print("healthy")
-            sys.exit(0)
-        else:
+        if not failures:
+            if scan_evidence(report):
+                print("healthy")
+                sys.exit(0)
             unknown("Attested schema but no positive scan evidence (zero or hidden successes).")
     elif isinstance(report.get("failures"), list):
         failures = [normalize(item) for item in report["failures"]]
