@@ -120,24 +120,83 @@ class Badges(unittest.TestCase):
         self.assertIn("\u26a0\ufe0f", suffix)
         self.assertNotIn(":warning:", suffix)
 
-    def test_badges_render_pills_with_ddmm_date(self):
-        # Stars pill in solid amber, commit pill in emerald,
-        # ISO date shown DD-MM-YYYY.
-        meta = {"repos": {"owner/repo": {"stars": 12000, "last_update": "2026-10-01"}}}
+    def test_commit_pill_shows_age_and_tier_against_checked_at(self):
+        # Stars pill in solid amber; commit pill shows age (not the date)
+        # and Option A traffic-light tier vs meta checked_at: 26d -> fresh.
+        meta = {
+            "checked_at": "2026-10-27T09:55:49Z",
+            "repos": {"owner/repo": {"stars": 12000, "last_update": "2026-10-01"}},
+        }
         suffix = build_site.badge_suffix("[X](https://github.com/owner/repo) — x", meta)
         self.assertEqual(
             suffix,
             ' <span class="hp-badge hp-badge--stars">★ 12.0k</span>'
-            ' <span class="hp-badge hp-badge--commit">last commit 01-10-2026</span>')
+            ' <span class="hp-badge hp-badge--commit hp-badge--commit-fresh">'
+            'last commit 26d</span>')
+
+    def test_commit_tier_boundaries(self):
+        # Option A: fresh <=30d, active 31-180d, aging 181-365d, dormant >365d.
+        for days, tier in (
+            (0, "fresh"), (29, "fresh"), (30, "fresh"),
+            (31, "active"), (180, "active"),
+            (181, "aging"), (365, "aging"),
+            (366, "dormant"), (4000, "dormant"),
+        ):
+            self.assertEqual(build_site.commit_tier(days), tier, f"{days}d")
+
+    def test_format_age_switches_to_years_past_a_year(self):
+        # < 365d -> "Nd"; >= 365d -> "Yy Dd" on a 365-day year; bare "Yy"
+        # when the remainder is 0.
+        self.assertEqual(build_site.format_age(0), "0d")
+        self.assertEqual(build_site.format_age(364), "364d")
+        self.assertEqual(build_site.format_age(365), "1y")
+        self.assertEqual(build_site.format_age(400), "1y 35d")
+        self.assertEqual(build_site.format_age(730), "2y")
+        self.assertEqual(build_site.format_age(2022), "5y 197d")
+
+    def test_dormant_pill_formats_years(self):
+        meta = {
+            "checked_at": "2026-10-27T09:55:49Z",
+            "repos": {"owner/repo": {"last_update": "2024-10-27"}},
+        }
+        suffix = build_site.badge_suffix("[X](https://github.com/owner/repo) — x", meta)
+        self.assertEqual(
+            suffix,
+            ' <span class="hp-badge hp-badge--commit hp-badge--commit-dormant">'
+            'last commit 2y</span>')
+
+    def test_aging_pill_uses_amber_tier(self):
+        meta = {
+            "checked_at": "2026-10-27",
+            "repos": {"owner/repo": {"last_update": "2026-01-01"}},
+        }
+        suffix = build_site.badge_suffix("[X](https://github.com/owner/repo) — x", meta)
+        self.assertEqual(
+            suffix,
+            ' <span class="hp-badge hp-badge--commit hp-badge--commit-aging">'
+            'last commit 299d</span>')
+
+    def test_future_update_clamps_to_fresh_zero_days(self):
+        # Clock skew must never render "last commit -3d".
+        meta = {
+            "checked_at": "2026-10-27",
+            "repos": {"owner/repo": {"last_update": "2026-10-30"}},
+        }
+        suffix = build_site.badge_suffix("[X](https://github.com/owner/repo) — x", meta)
+        self.assertIn("hp-badge--commit-fresh", suffix)
+        self.assertIn("last commit 0d", suffix)
 
     def test_date_display_converts_iso_to_ddmm(self):
-        # Storage stays ISO (YYYY-MM-DD); only the rendered text flips to DD-MM-YYYY.
+        # Storage stays ISO (YYYY-MM-DD); the fallback (no checked_at) and any
+        # unparsable stamp keep the DD-MM-YYYY rendering.
         self.assertEqual(build_site.format_date("2026-10-01"), "01-10-2026")
         self.assertEqual(build_site.format_date("2021-04-15"), "15-04-2021")
         self.assertEqual(build_site.format_date("garbage"), "garbage")
         self.assertEqual(build_site.format_date(None), "")
 
     def test_no_stars_pill_when_stars_missing(self):
+        # Differential pin: with no checked_at reference the commit pill keeps
+        # its previous absolute-date output and base palette.
         meta = {"repos": {"owner/repo": {"stars": None, "last_update": "2026-10-01"}}}
         suffix = build_site.badge_suffix("[X](https://github.com/owner/repo) — x", meta)
         self.assertEqual(
@@ -189,6 +248,27 @@ class NightshellTheme(unittest.TestCase):
         self.assertIn('[data-md-color-scheme="default"] .hp-badge--stars', css)
         self.assertIn(".hp-badge--commit", css)
         self.assertIn(".hp-badge--broken", css)
+
+    def test_commit_tier_palettes_ship_in_css(self):
+        # Option A traffic light: active/aging/dormant override the emerald
+        # base, each with a light-scheme variant, and they must come AFTER the
+        # base .hp-badge--commit rules so the cascade wins on equal specificity.
+        css = (self.docs / "stylesheets" / "theme.css").read_text(encoding="utf-8")
+        for needle in (
+            ".hp-badge--commit-active { background: #1a2e05; color: #a3e635;",
+            '[data-md-color-scheme="default"] .hp-badge--commit-active '
+            '{ background: #ecfccb; color: #3f6212;',
+            ".hp-badge--commit-aging { background: #451a03; color: #fcd34d;",
+            '[data-md-color-scheme="default"] .hp-badge--commit-aging '
+            '{ background: #fef3c7; color: #92400e;',
+            ".hp-badge--commit-dormant { background: #450a0a; color: #fca5a5;",
+            '[data-md-color-scheme="default"] .hp-badge--commit-dormant '
+            '{ background: #fee2e2; color: #991b1b;',
+        ):
+            self.assertIn(needle, css)
+        self.assertLess(css.index(".hp-badge--commit {"), css.index(".hp-badge--commit-active {"))
+        self.assertLess(css.index('[data-md-color-scheme="default"] .hp-badge--commit {'),
+                        css.index('[data-md-color-scheme="default"] .hp-badge--commit-active {'))
 
     def test_pills_scale_down_on_mobile(self):
         css = (self.docs / "stylesheets" / "theme.css").read_text(encoding="utf-8")

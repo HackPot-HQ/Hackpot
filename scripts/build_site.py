@@ -14,6 +14,7 @@ import re
 import shutil
 import subprocess
 import sys
+from datetime import date
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from links_common import GITHUB_URL_RE, github_slug  # noqa: E402
@@ -60,14 +61,59 @@ def format_stars(count):
 
 
 def format_date(iso):
-    """Render-only ISO YYYY-MM-DD -> DD-MM-YYYY; stored metadata stays ISO."""
+    """Render-only ISO YYYY-MM-DD -> DD-MM-YYYY; stored metadata stays ISO.
+
+    Used by the no-reference fallback pill; age display never reaches here."""
     match = re.match(r"(\d{4})-(\d{2})-(\d{2})", iso or "")
     return f"{match.group(3)}-{match.group(2)}-{match.group(1)}" if match else (iso or "")
 
 
+def parse_day(iso):
+    """Leading YYYY-MM-DD of an ISO stamp -> date, or None if unparsable."""
+    try:
+        return date.fromisoformat((iso or "")[:10])
+    except ValueError:
+        return None
+
+
+def commit_tier(days):
+    """Option A traffic light: fresh <=30d (emerald base palette), active
+    <=180d (lime), aging <=365d (amber), dormant >365d (red)."""
+    if days <= 30:
+        return "fresh"
+    if days <= 180:
+        return "active"
+    if days <= 365:
+        return "aging"
+    return "dormant"
+
+
+def format_age(days):
+    """"Nd" under a year; "Yy Dd" at or above 365d on a 365-day year,
+    bare "Yy" when the remainder is 0."""
+    if days < 365:
+        return f"{days}d"
+    years, rem = divmod(days, 365)
+    return f"{years}y" if rem == 0 else f"{years}y {rem}d"
+
+
 STARS_BADGE = '<span class="hp-badge hp-badge--stars">\u2605 {}</span>'
-COMMIT_BADGE = '<span class="hp-badge hp-badge--commit">last commit {}</span>'
+COMMIT_BADGE = ('<span class="hp-badge hp-badge--commit hp-badge--commit-{}">'
+                'last commit {}</span>')
+COMMIT_BADGE_DATED = '<span class="hp-badge hp-badge--commit">last commit {}</span>'
 BROKEN_BADGE = '<span class="hp-badge hp-badge--broken">\u26a0\ufe0f repo not found</span>'
+
+
+def commit_badge(entry, meta):
+    """Freshness pill for one repo entry: age vs meta checked_at with an
+    Option A tier class, or the absolute DD-MM-YYYY date when the metadata
+    gives no usable reference (pre-refresh builds, corrupt stamps)."""
+    reference = parse_day(meta.get("checked_at"))
+    updated = parse_day(entry["last_update"])
+    if reference is None or updated is None:
+        return COMMIT_BADGE_DATED.format(format_date(entry["last_update"]))
+    days = max((reference - updated).days, 0)
+    return COMMIT_BADGE.format(commit_tier(days), format_age(days))
 
 
 def badge_suffix(line, meta):
@@ -87,7 +133,7 @@ def badge_suffix(line, meta):
         if entry.get("stars") is not None:
             parts.append(STARS_BADGE.format(format_stars(entry["stars"])))
         if entry.get("last_update"):
-            parts.append(COMMIT_BADGE.format(format_date(entry["last_update"])))
+            parts.append(commit_badge(entry, meta))
         return (" " + " ".join(parts)) if parts else ""
     return ""
 
@@ -207,6 +253,12 @@ a.md-tag:active { transform: translateY(0); box-shadow: 0 1px 4px #10b98133 !imp
 [data-md-color-scheme="default"] .hp-badge--stars { background: #f59e0b; color: #292002; border-color: #fbbf2466; }
 .hp-badge--commit { background: #022c22; color: #6ee7b7; border-color: #10b98155; }
 [data-md-color-scheme="default"] .hp-badge--commit { background: #d1fae5; color: #065f46; border-color: #10b98155; }
+.hp-badge--commit-active { background: #1a2e05; color: #a3e635; border-color: #84cc1655; }
+[data-md-color-scheme="default"] .hp-badge--commit-active { background: #ecfccb; color: #3f6212; border-color: #84cc1655; }
+.hp-badge--commit-aging { background: #451a03; color: #fcd34d; border-color: #f59e0b55; }
+[data-md-color-scheme="default"] .hp-badge--commit-aging { background: #fef3c7; color: #92400e; border-color: #f59e0b55; }
+.hp-badge--commit-dormant { background: #450a0a; color: #fca5a5; border-color: #ef444455; }
+[data-md-color-scheme="default"] .hp-badge--commit-dormant { background: #fee2e2; color: #991b1b; border-color: #ef444455; }
 .hp-badge--broken { background: #7f1d1d33; color: #fca5a5; border-color: #f8717155; }
 [data-md-color-scheme="default"] .hp-badge--broken { background: #fee2e2; color: #991b1b; border-color: #ef444455; }
 @media (max-width: 30em) { .hp-badge { font-size: .58rem; padding: .08rem .4rem; } }
