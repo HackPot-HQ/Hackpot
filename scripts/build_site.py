@@ -177,7 +177,7 @@ def page_tags(text):
     """Unique tags from inline backtick tokens on list-item lines.
 
     `type:tool`-style tokens contribute their value (tool); plain tokens
-    (free, osint, ...) are kept raw. Feeds Zensical's native tags plugin so
+    (osint, linux, ...) are kept raw. Feeds Zensical's native tags plugin so
     entries' tags are searchable and filterable at page level."""
     tags = []
     for line in text.split("\n"):

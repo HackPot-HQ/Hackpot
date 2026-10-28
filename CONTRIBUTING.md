@@ -13,7 +13,7 @@ Hackpot is a curated, category-first index of penetration-testing resources. Thi
 One bullet per resource:
 
 ```markdown
-- [Name](https://canonical-url) — What it does and why it matters. `type:tool` `free` `linux`
+- [Name](https://canonical-url) — What it does and why it matters. `type:tool` `linux`
 ```
 
 Rules:
@@ -23,7 +23,6 @@ Rules:
 - Link the canonical source (project page, repository, docs) — not mirrors or forks.
 - Tags are optional but encouraged:
   - Type: ``type:tool``, `type:course`, `type:docs`, `type:wordlist`, `type:lab`, `type:article`, `type:video`
-  - Cost: `free`, `paid`, `freemium`
   - Platform or tech as needed: `linux`, `windows`, `aws`, `gdb`, ...
   - On the website the trailing tokens render as clickable tag bubbles at the
     page bottom (and in a whole-site tag index at Tags), not inside the entry

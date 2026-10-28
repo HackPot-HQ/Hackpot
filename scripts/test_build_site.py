@@ -75,12 +75,12 @@ class PageTags(unittest.TestCase):
         # exact YAML-safe emission of quote/backslash-bearing tags.
         src = (
             "# T\n\n"
-            "- [A](https://x.test/a) — a. `type:tool` ` free ` `dup` `dup`\n"
+            "- [A](https://x.test/a) — a. `type:tool` ` linux ` `dup` `dup`\n"
             "- [B](https://x.test/b) — b. `type:` `type: spaced` `wei\"rd` `back\\slash`\n"
             "Not a list item: `ignored`\n"
         )
         self.assertEqual(build_site.page_tags(src),
-                         ["tool", "free", "dup", "spaced", 'wei"rd', "back\\slash"])
+                         ["tool", "linux", "dup", "spaced", 'wei"rd', "back\\slash"])
         # Exact emission (not just "escape chars appear somewhere"): the
         # document must be a tags list of properly escaped scalars.
         self.assertEqual(
@@ -205,7 +205,7 @@ class Badges(unittest.TestCase):
 
     def test_entry_lines_survive_transform(self):
         # Differential pin: content pages must keep their entry bullets.
-        src = "# T\n\n- [HackBar](https://github.com/d3vilbug/HackBar) — x. `type:tool` `free`\n"
+        src = "# T\n\n- [HackBar](https://github.com/d3vilbug/HackBar) — x. `type:tool` `linux`\n"
         out = build_site.transform(src, {}, "https://github.com/J0nan/Hackpot")
         self.assertIn("- [HackBar](https://github.com/d3vilbug/HackBar)", out)
         self.assertIn("`type:tool`", out)
@@ -353,7 +353,7 @@ class TagDedupe(unittest.TestCase):
         self.assertIn("[HackBar]", leaf.read_text(encoding="utf-8"))
 
     def test_transform_unit_strip_only_removes_tokens(self):
-        src = "- [X](https://x.test) — does things. `type:tool` `free`\n"
+        src = "- [X](https://x.test) — does things. `type:tool` `linux`\n"
         kept = build_site.transform(src, {}, None)
         self.assertIn("`type:tool`", kept)  # old behavior intact by default
         stripped = build_site.transform(src, {}, None, drop_tag_tokens=True)
@@ -361,21 +361,21 @@ class TagDedupe(unittest.TestCase):
 
     def test_strip_keeps_inline_code_in_description(self):
         # Only the TRAILING tag run is removed; inline code in the prose stays.
-        src = "- [X](https://x.test) — uses `nmap` scripts. `type:tool` `free`\n"
+        src = "- [X](https://x.test) — uses `nmap` scripts. `type:tool` `linux`\n"
         stripped = build_site.transform(src, {}, None, drop_tag_tokens=True)
         self.assertEqual(stripped, "- [X](https://x.test) — uses `nmap` scripts.\n")
 
     def test_fenced_example_bullets_are_untouched(self):
         # Doc examples inside ``` fences keep their literal tag tokens.
         src = (
-            "- [X](https://x.test) — real entry. `free`\n\n"
+            "- [X](https://x.test) — real entry. `linux`\n\n"
             "```markdown\n"
-            "- [Name](https://example.com) — what it does. `type:tool` `free`\n"
+            "- [Name](https://example.com) — what it does. `type:tool` `linux`\n"
             "```\n"
         )
         out = build_site.transform(src, {}, None, drop_tag_tokens=True)
         self.assertIn(
-            "- [Name](https://example.com) — what it does. `type:tool` `free`", out)
+            "- [Name](https://example.com) — what it does. `type:tool` `linux`", out)
         self.assertIn("- [X](https://x.test) — real entry.\n", out)
 
 

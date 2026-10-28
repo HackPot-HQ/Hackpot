@@ -32,7 +32,7 @@ Categories follow the kill chain: recon → initial access → foothold and oper
 
 Each category README links its subcategories, and the leaf READMEs hold the actual entries. Every entry follows one format:
 
-- [Name](https://example.com) — what it does and why it matters. `type:tool` `free` `linux`
+- [Name](https://example.com) — what it does and why it matters. `type:tool` `linux`
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full conventions.
 
