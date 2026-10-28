@@ -190,6 +190,44 @@ class NightshellTheme(unittest.TestCase):
         self.assertIn(".hp-badge--commit", css)
         self.assertIn(".hp-badge--broken", css)
 
+    def test_pills_scale_down_on_mobile(self):
+        css = (self.docs / "stylesheets" / "theme.css").read_text(encoding="utf-8")
+        # Compact base pill: smaller font and tighter padding so the stars /
+        # last-commit chips never crowd or overlap the entry text.
+        self.assertIn("font-size: .64rem; padding: .1rem .45rem;", css)
+        self.assertIn("line-height: 1.4;", css)
+        # Phone-width screens scale the pills down even further.
+        self.assertIn("@media (max-width: 30em) { .hp-badge { font-size: .58rem;", css)
+        # Touch devices must not keep the translateY lift hover, which sticks
+        # after a tap and makes pills ride over the surrounding text.
+        self.assertIn("@media (hover: none) { .hp-badge:hover { transform: none;", css)
+
+    def test_tag_bubbles_no_sticky_hover_on_touch(self):
+        css = (self.docs / "stylesheets" / "theme.css").read_text(encoding="utf-8")
+        # The tag bubbles lift -2px on hover; on touch that lift sticks after
+        # a tap, so the guard must cover them the same way it covers pills.
+        self.assertIn(
+            "@media (hover: none) { .hp-badge:hover { transform: none; "
+            "box-shadow: none; } a.md-tag:hover { transform: none; box-shadow: none; } }",
+            css)
+
+    def test_hero_padding_is_fluid(self):
+        css = (self.docs / "stylesheets" / "theme.css").read_text(encoding="utf-8")
+        # Fixed 2.2rem/2rem padding eats ~64px of a 360px phone screen; the
+        # hero must clamp between a mobile floor and the desktop value.
+        self.assertIn(
+            "padding: clamp(1.2rem, 5vw, 2.2rem) clamp(1rem, 5vw, 2rem);", css)
+        # The monospace prompt line must wrap instead of touching the edges.
+        self.assertIn(
+            ".hp-hero .prompt { font-family: \"JetBrains Mono\", monospace; "
+            "color: #34d399; font-size: .95rem; overflow-wrap: anywhere; }", css)
+
+    def test_tables_scroll_on_small_screens(self):
+        css = (self.docs / "stylesheets" / "theme.css").read_text(encoding="utf-8")
+        # overflow: hidden clips wide tables on mobile; auto keeps the
+        # rounded corners and makes them swipeable instead.
+        self.assertIn(".md-content table { border-radius: 10px; overflow: auto; }", css)
+
     def test_self_hosted_fonts_ship_with_the_site(self):
         for name in ("inter-latin-var.woff2", "jetbrains-mono-latin-var.woff2"):
             shipped = self.docs / "stylesheets" / "fonts" / name
