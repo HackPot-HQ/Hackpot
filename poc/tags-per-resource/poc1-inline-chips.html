@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>POC 1 · Inline tag chips per resource — Hackpot</title>
+<link rel="stylesheet" href="poc.css">
+</head>
+<body>
+<div class="announce">🔗 Links, stars and freshness last checked by CI: <strong>2026-10-27</strong></div>
+<header class="hp-header">
+  <span class="logo">🫙 Hackpot — the jackpot of pentesting resources</span>
+  <div class="search">🔍 Search</div>
+</header>
+<div class="layout">
+<nav class="nav">
+  <div class="cat">01 · Recon and OSINT</div>
+  <a class="item active" href="#">OSINT</a>
+  <a class="item" href="#">Port Scanning</a>
+  <a class="item" href="#">Subdomain Enumeration</a>
+  <div class="cat">05 · Exploitation</div>
+  <a class="item" href="#">Linux Privilege Escalation</a>
+  <div class="cat">08 · Web Application</div>
+  <a class="item" href="#">Vulnerability Specific</a>
+  <div class="cat">12 · Hardware / IoT</div>
+  <a class="item" href="#">IoT and Smart Devices</a>
+  <div class="cat">Site</div>
+  <a class="item" href="#">Home</a>
+  <a class="item" href="#tags-page">Tags</a>
+</nav>
+<main class="content">
+<div class="pocnav"><a href="index.html">← POC overview</a> <a href="poc2-live-filter.html">POC 2: live filter →</a> <a href="poc3-resource-catalog.html">POC 3: catalog cards →</a></div>
+
+<div class="note"><strong>POC 1 — “inline chips, no magic”.</strong> Tags stay written exactly as today (trailing backticks per
+entry in the README), but instead of being stripped from the entry and merged into the page footer, each token renders
+as a small clickable chip <em>inside its own resource line</em>. The Tags index becomes resource-level: clicking a chip
+jumps to that tag's section, which lists the tagged <em>resources</em> across the whole site, not the pages.
+No JavaScript needed — pure anchor links. (OSINT/theHarvester/SpiderFoot entries: 9Ghz and HIBP are real catalog data;
+two OSINT entries are sample fill with plausible badges to make the list realistic.)</div>
+
+<!-- ============ MOCK: leaf category page ============ -->
+<h1>OSINT</h1>
+<p class="subtitle">Resources for tracking, gathering intelligence, and investigating targets using public open-source information.</p>
+
+<h2 id="resources">Resources</h2>
+<ul class="entries">
+  <li id="9ghz"><a href="https://9ghz.com/">9Ghz</a> <span class="desc">— Check if your Email/Name/Username/Phone/IC/ID/SSN/Passport/IP in any data breach.</span>
+    <a class="rt rt--type" href="#tags-page" title="go to tag index">tool</a>
+    <a class="rt" href="#tags-page">osint</a>
+    <a class="rt" href="#tags-page">credentials</a>
+    <a class="rt" href="#tags-page">password</a>
+    <a class="rt" href="#tags-page">breach</a></li>
+  <li id="haveibeenpwned"><a href="https://haveibeenpwned.com/">Have I Been Pwned</a> <span class="desc">— Check if an email address is in a data breach.</span>
+    <a class="rt rt--type" href="#tags-page">tool</a>
+    <a class="rt" href="#tags-page">breach</a>
+    <a class="rt" href="#tags-page">leaks</a>
+    <a class="rt" href="#tags-page">credentials</a>
+    <a class="rt" href="#tags-page">password</a></li>
+  <li id="theharvester"><a href="https://github.com/laramies/theHarvester">theHarvester</a> <span class="desc">— E-mails, subdomains and names Harvester — OSINT gathering from public sources.</span>
+    <span class="hp-badge hp-badge--stars">★ 9.7k</span><span class="hp-badge hp-badge--commit-active">last commit 92d</span>
+    <a class="rt rt--type" href="#tags-page">tool</a>
+    <a class="rt" href="#tags-page">osint</a>
+    <a class="rt" href="#tags-page">email</a>
+    <a class="rt" href="#tags-page">subdomain</a></li>
+  <li id="spiderfoot"><a href="https://github.com/smicallef/spiderfoot">SpiderFoot</a> <span class="desc">— Open source intelligence automation for footprinting and risk profiling targets.</span>
+    <span class="hp-badge hp-badge--stars">★ 15k</span><span class="hp-badge hp-badge--commit-dormant">last commit 3y 44d</span>
+    <a class="rt rt--type" href="#tags-page">tool</a>
+    <a class="rt" href="#tags-page">osint</a>
+    <a class="rt" href="#tags-page">automation</a></li>
+  <li id="maltego"><a href="https://www.maltego.com/">Maltego</a> <span class="desc">— Proprietary link-analysis platform for mapping relationships between OSINT entities.</span>
+    <a class="rt rt--type" href="#tags-page">tool</a>
+    <a class="rt" href="#tags-page">osint</a>
+    <a class="rt" href="#tags-page">graph</a>
+    <a class="rt" href="#tags-page">proprietary</a></li>
+</ul>
+
+<div class="diff">✅ Removed on this page: the page-footer bubble strip
+<code>tool · osint · credentials · password · breach · leaks · email · subdomain · automation · graph · proprietary</code>
+(which today merges <em>every</em> entry's tags and cannot tell you which resource has which). The category page keeps
+only its description + resources.</div>
+
+<hr class="sep">
+
+<!-- ============ MOCK: new Tags page ============ -->
+<h1 id="tags-page">Tags</h1>
+<p class="subtitle">Every tag used across the catalog. Pick one to see the exact resources it labels — not the pages they live on.</p>
+
+<p style="display:flex;gap:.4rem;flex-wrap:wrap">
+  <a class="rt" href="#t-breach">breach <span style="opacity:.6">2</span></a>
+  <a class="rt" href="#t-credentials">credentials <span style="opacity:.6">2</span></a>
+  <a class="rt" href="#t-osint">osint <span style="opacity:.6">4</span></a>
+  <a class="rt rt--type" href="#t-tool">tool <span style="opacity:.6">5</span></a>
+  <a class="rt" href="#t-password">password <span style="opacity:.6">2</span></a>
+  <a class="rt" href="#t-linux">linux <span style="opacity:.6">12</span></a>
+  <a class="rt" href="#t-more">…</a>
+</p>
+
+<div class="tagsec" id="t-breach"><h3><code>breach</code> — 2 resources</h3>
+  <ul>
+    <li><a href="#9ghz">9Ghz</a> <span class="where">01 · Recon and OSINT / OSINT</span></li>
+    <li><a href="#haveibeenpwned">Have I Been Pwned</a> <span class="where">01 · Recon and OSINT / OSINT</span></li>
+  </ul>
+</div>
+
+<div class="tagsec" id="t-credentials"><h3><code>credentials</code> — 2 resources</h3>
+  <ul>
+    <li><a href="#9ghz">9Ghz</a> <span class="where">01 · Recon and OSINT / OSINT</span></li>
+    <li><a href="#haveibeenpwned">Have I Been Pwned</a> <span class="where">01 · Recon and OSINT / OSINT</span></li>
+  </ul>
+</div>
+
+<div class="tagsec" id="t-osint"><h3><code>osint</code> — 4 resources</h3>
+  <ul>
+    <li><a href="#9ghz">9Ghz</a> <span class="where">01 · Recon and OSINT / OSINT</span></li>
+    <li><a href="#theharvester">theHarvester</a> <span class="where">01 · Recon and OSINT / OSINT</span></li>
+    <li><a href="#spiderfoot">SpiderFoot</a> <span class="where">01 · Recon and OSINT / OSINT</span></li>
+    <li><a href="#maltego">Maltego</a> <span class="where">01 · Recon and OSINT / OSINT</span></li>
+  </ul>
+</div>
+
+<div class="tagsec" id="t-tool"><h3><code>type:tool</code> — 5 resources</h3>
+  <ul>
+    <li><a href="#9ghz">9Ghz</a> <span class="where">01 · Recon and OSINT / OSINT</span> <a class="rt" href="#t-osint">osint</a><a class="rt" href="#t-breach">breach</a></li>
+    <li><a href="#haveibeenpwned">Have I Been Pwned</a> <span class="where">01 · Recon and OSINT / OSINT</span> <a class="rt" href="#t-breach">breach</a><a class="rt" href="#t-leaks">leaks</a></li>
+    <li><a href="#theharvester">theHarvester</a> <span class="where">01 · Recon and OSINT / OSINT</span> <a class="rt" href="#t-email">email</a></li>
+    <li><a href="#spiderfoot">SpiderFoot</a> <span class="where">01 · Recon and OSINT / OSINT</span> <a class="rt" href="#t-automation">automation</a></li>
+    <li><a href="#maltego">Maltego</a> <span class="where">01 · Recon and OSINT / OSINT</span> <a class="rt" href="#t-graph">graph</a></li>
+  </ul>
+</div>
+
+<div class="diff"><strong>What changes vs today:</strong> the tag index stops resolving tags → pages and starts resolving
+tags → entries. Same data the build already parses (<code>page_tags()</code> reads per-entry backticks today); the
+aggregation would keep per-entry ownership instead of flattening, emit each chip as HTML in the entry line, and give
+each entry a stable anchor id. Static generation, zero JS, search still indexes tags.</div>
+
+<div class="foot">POC mock — not the live site. Back to <a href="index.html">POC overview</a>.</div>
+</main>
+<aside class="toc">
+  <div class="t">On this page</div>
+  <div>Resources</div>
+  <div>Tags</div>
+  <div style="margin-top:.4rem;color:#34d399">› breach</div>
+  <div style="color:#34d399">› credentials</div>
+  <div style="color:#34d399">› osint</div>
+  <div style="color:#34d399">› tool</div>
+</aside>
+</div>
+</body>
+</html>

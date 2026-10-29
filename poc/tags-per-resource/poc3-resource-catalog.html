@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>POC 3 · Global resource catalog — Hackpot</title>
+<link rel="stylesheet" href="poc.css">
+</head>
+<body>
+<div class="announce">🔗 Links, stars and freshness last checked by CI: <strong>2026-10-27</strong></div>
+<header class="hp-header">
+  <span class="logo">🫙 Hackpot — the jackpot of pentesting resources</span>
+  <div class="search">🔍 Search</div>
+</header>
+<div class="layout">
+<nav class="nav">
+  <div class="cat">Site</div>
+  <a class="item" href="#">Home</a>
+  <a class="item active" href="#">Resource Catalog</a>
+  <a class="item" href="#">Tags (legacy)</a>
+  <a class="item" href="#">Contributing</a>
+  <div class="cat">01 · Recon and OSINT</div>
+  <a class="item" href="#">OSINT</a>
+  <div class="cat">05 · Exploitation</div>
+  <a class="item" href="#">Linux Privilege Escalation</a>
+  <div class="cat">08 · Web Application</div>
+  <a class="item" href="#">Vulnerability Specific</a>
+  <div class="cat">09 · Mobile</div>
+  <a class="item" href="#">iOS</a>
+  <div class="cat">12 · Hardware / IoT</div>
+  <a class="item" href="#">IoT and Smart Devices</a>
+  <div class="cat">15 · AI and ML</div>
+  <a class="item" href="#">AI-Assisted Offensive Tools</a>
+</nav>
+<main class="content">
+<div class="pocnav"><a href="index.html">← POC overview</a> <a href="poc1-inline-chips.html">← POC 1</a> <a href="poc2-live-filter.html">← POC 2</a></div>
+
+<div class="note"><strong>POC 3 — “the catalog becomes a database”.</strong> The boldest take: if tags belong to resources,
+the site's primary navigation surface can be the <em>resource catalog itself</em>. A new /catalog/ page lists every
+resource as a card — category breadcrumb, CI badges, its own tags — with a global tag-cloud sidebar and text search.
+The category tree stays in the nav; this adds a cross-category “find me any tool tagged X” layer.
+Entries are real catalog rows (HIBP, HackBar, impactor, mithril, Offensive-Security-AI-Models, HackTricks…) plus sample
+fill; star/freshness values mirror real CI metadata where the repo exists in <code>meta/resources-meta.json</code>.
+Click sidebar chips (AND filter) or type in the search box.</div>
+
+<h1>Resource Catalog</h1>
+<p class="subtitle">Every resource in Hackpot, tagged by what it <em>is</em> — filter across all 17 categories.</p>
+
+<div class="cardgrid">
+<aside class="sidecloud">
+  <input class="q" id="q" type="search" placeholder="search name + description…">
+  <div class="grp">Type</div>
+  <div id="types"></div>
+  <div class="grp">Tags</div>
+  <div id="cloud"></div>
+  <div style="margin-top:.8rem"><button class="clear" id="clear">clear filters ✕</button></div>
+  <p class="count" id="count" style="font-family:'JetBrains Mono',monospace;font-size:.72rem;color:#fbbf24;margin-top:.6rem"></p>
+</aside>
+
+<div>
+<div class="cards" id="cards">
+
+  <div class="card" data-tags="tool osint credentials password breach" data-text="9ghz check email name username phone ssn passport ip data breach">
+    <div class="crumb">01 · Recon and OSINT / OSINT</div>
+    <h3><a href="https://9ghz.com/">9Ghz</a></h3>
+    <p class="desc">Check if your Email/Name/Username/Phone/IC/ID/SSN/Passport/IP in any data breach.</p>
+    <div class="badges"></div>
+    <div class="tags"></div>
+  </div>
+
+  <div class="card" data-tags="tool breach leaks credentials password" data-text="have i been pwned email data breach">
+    <div class="crumb">01 · Recon and OSINT / OSINT</div>
+    <h3><a href="https://haveibeenpwned.com/">Have I Been Pwned</a></h3>
+    <p class="desc">Check if an email address is in a data breach.</p>
+    <div class="badges"></div>
+    <div class="tags"></div>
+  </div>
+
+  <div class="card" data-tags="tool burp plugin extension web" data-text="hackbar burpsuite plugin web extension">
+    <div class="crumb">08 · Web App / Vulnerability Specific</div>
+    <h3><a href="https://github.com/d3vilbug/HackBar">HackBar</a></h3>
+    <p class="desc">HackBar plugin for Burpsuite.</p>
+    <div class="badges"><span class="hp-badge hp-badge--stars">★ 1.6k</span><span class="hp-badge hp-badge--commit-dormant">last commit 5y 19d</span></div>
+    <div class="tags"></div>
+  </div>
+
+  <div class="card" data-tags="tool ios ipados ipa sideload" data-text="impactor ios sideloading ipa cross-platform">
+    <div class="crumb">09 · Mobile / iOS</div>
+    <h3><a href="https://github.com/claration/impactor">impactor</a></h3>
+    <p class="desc">Cross-platform &amp; feature rich iOS/iPadOS/tvOS sideloading application. Formerly known as PlumeImpactor.</p>
+    <div class="badges"><span class="hp-badge hp-badge--stars">★ 3.6k</span><span class="hp-badge hp-badge--commit">last commit 3d</span></div>
+    <div class="tags"></div>
+  </div>
+
+  <div class="card" data-tags="tool secrets scanner cve firmware iot" data-text="mithril iot scanner secrets sbom cve firmware">
+    <div class="crumb">12 · Hardware, IoT and ICS / IoT</div>
+    <h3><a href="https://github.com/nmatt0/mithril">mithril</a></h3>
+    <p class="desc">IoT static scanner for secrets, SBOM, CVEs and more.</p>
+    <div class="badges"></div>
+    <div class="tags"></div>
+  </div>
+
+  <div class="card" data-tags="docs ai models offensive llm" data-text="offensive security ai models uncensored fine-tuned cybersecurity">
+    <div class="crumb">15 · AI and ML / AI-Assisted Offensive Tools</div>
+    <h3><a href="https://github.com/JoasASantos/Offensive-Security-AI-Models">Offensive-Security-AI-Models</a></h3>
+    <p class="desc">Uncensored AI models or those fine-tuned for cybersecurity tasks.</p>
+    <div class="badges"><span class="hp-badge hp-badge--stars">★ 746</span><span class="hp-badge hp-badge--commit">last commit 29d</span></div>
+    <div class="tags"></div>
+  </div>
+
+  <div class="card" data-tags="docs cheatsheet linux privesc" data-text="hacktricks knowledge base offensive security wiki">
+    <div class="crumb">17 · Learning / Blogs and Podcasts</div>
+    <h3><a href="https://hacktricks.wiki/">HackTricks</a></h3>
+    <p class="desc">A free, community-maintained cybersecurity knowledge base focused on offensive security.</p>
+    <div class="badges"></div>
+    <div class="tags"></div>
+  </div>
+
+  <div class="card" data-tags="tool linux enumeration privesc" data-text="linpeas privilege escalation awesome scripts suite">
+    <div class="crumb">05 · Exploitation / Linux PrivEsc</div>
+    <h3><a href="https://github.com/peass-ng/PEASS-ng">LinPEAS</a></h3>
+    <p class="desc">Privilege Escalation Awesome Scripts SUITE: enumerates every common privesc vector in one run.</p>
+    <div class="badges"><span class="hp-badge hp-badge--stars">★ 13k</span><span class="hp-badge hp-badge--commit">last commit 4d</span></div>
+    <div class="tags"></div>
+  </div>
+
+  <div class="card" data-tags="docs linux privesc cheatsheet" data-text="gtfobins unix binaries escalate break out">
+    <div class="crumb">05 · Exploitation / Linux PrivEsc</div>
+    <h3><a href="https://gtfobins.github.io/">GTFOBins</a></h3>
+    <p class="desc">Curated list of Unix binaries that can be abused to escalate or break out.</p>
+    <div class="badges"><span class="hp-badge hp-badge--stars">★ 14k</span><span class="hp-badge hp-badge--commit">last commit 12d</span></div>
+    <div class="tags"></div>
+  </div>
+
+  <div class="card" data-tags="tool web proxy scanner" data-text="zap owasp proxy scanner web">
+    <div class="crumb">08 · Web App / Proxies and Scanners</div>
+    <h3><a href="https://github.com/zaproxy/zaproxy">ZAP</a></h3>
+    <p class="desc">OWASP ZAP: web proxy and automated vulnerability scanner with an automation framework.</p>
+    <div class="badges"><span class="hp-badge hp-badge--stars">★ 13k</span><span class="hp-badge hp-badge--commit">last commit 6d</span></div>
+    <div class="tags"></div>
+  </div>
+
+  <div class="card" data-tags="lab training web" data-text="portswigger web security academy course labs">
+    <div class="crumb">17 · Learning / Practice Labs</div>
+    <h3><a href="https://portswigger.net/web-security">PortSwigger Web Security Academy</a></h3>
+    <p class="desc">Free, hands-on labs and reading for every major web vulnerability class.</p>
+    <div class="badges"></div>
+    <div class="tags"></div>
+  </div>
+
+  <div class="card" data-tags="wordlist payload brute" data-text="seclists wordlists payloads">
+    <div class="crumb">16 · Wordlists and Payloads / Dictionaries</div>
+    <h3><a href="https://github.com/danielmiessler/SecLists">SecLists</a></h3>
+    <p class="desc">The standard collection of security wordlists, payloads, and pattern files.</p>
+    <div class="badges"><span class="hp-badge hp-badge--stars">★ 61k</span><span class="hp-badge hp-badge--commit-active">last commit 21d</span></div>
+    <div class="tags"></div>
+  </div>
+
+  <div class="card" data-tags="tool wifi wireless driver" data-text="aircrack-ng wifi wireless audit">
+    <div class="crumb">04 · Wireless and RF / Wi-Fi</div>
+    <h3><a href="https://github.com/aircrack-ng/aircrack-ng">aircrack-ng</a></h3>
+    <p class="desc">The classic wireless network security toolkit: capture, crack, replay.</p>
+    <div class="badges"><span class="hp-badge hp-badge--stars">★ 5.5k</span><span class="hp-badge hp-badge--commit-active">last commit 55d</span></div>
+    <div class="tags"></div>
+  </div>
+
+  <div class="card" data-tags="tool c2 redteam windows beacon" data-text="sliver c2 beacon red team">
+    <div class="crumb">06 · Red Team / C2 Tradecraft</div>
+    <h3><a href="https://github.com/BishopFox/sliver">Sliver</a></h3>
+    <p class="desc">Cross-platform, malleable-protocol C2 framework with generated implants.</p>
+    <div class="badges"><span class="hp-badge hp-badge--stars">★ 6.3k</span><span class="hp-badge hp-badge--commit">last commit 8d</span></div>
+    <div class="tags"></div>
+  </div>
+
+</div>
+<p class="count hidden" id="empty" style="display:none;color:#fca5a5">No resource matches.</p>
+</div>
+</div>
+
+<div class="diff"><strong>What changes vs today:</strong> nothing is deleted — the category pages keep their lists — but tags
+now have a site-wide home that points at <em>resources</em>, which the page-level model cannot offer. Implementation:
+the build already sees every entry line + its tags; it would additionally emit <code>site/catalog/index.html</code>
+(cards + tag cloud + small JS index, same data the search plugin already builds). Biggest design bet of the three,
+biggest payoff for “I know the technique, not the category” browsing.</div>
+
+<div class="foot">POC mock — not the live site. Back to <a href="index.html">POC overview</a>.</div>
+</main>
+</div>
+
+<script>
+// POC 3 — global AND-filter over the catalog + text search.
+const TYPE = ['tool','docs','lab','article','video','course','wordlist'];
+const cards = [...document.querySelectorAll('.card')];
+const counts = new Map();
+cards.forEach(c => c.dataset.tags.split(' ').forEach(t => counts.set(t, (counts.get(t) || 0) + 1)));
+const flat = [...counts.keys()].filter(t => !TYPE.includes(t)).sort((a,b) => counts.get(b) - counts.get(a) || a.localeCompare(b));
+const sel = new Set();
+
+function bar(el, tags) {
+  el.innerHTML = '';
+  tags.forEach(t => {
+    const a = document.createElement('a');
+    a.className = 'rt' + (TYPE.includes(t) ? ' rt--type' : '') + (sel.has(t) ? ' on' : '');
+    a.textContent = t + ' ' + counts.get(t);
+    a.href = 'javascript:void 0';
+    a.onclick = () => { sel.has(t) ? sel.delete(t) : sel.add(t); apply(); };
+    el.appendChild(a);
+  });
+}
+function apply() {
+  bar(document.getElementById('types'), TYPE.filter(t => counts.has(t)));
+  bar(document.getElementById('cloud'), flat);
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  let n = 0;
+  cards.forEach(c => {
+    const tags = c.dataset.tags.split(' ');
+    const show = [...sel].every(t => tags.includes(t)) &&
+      (!q || (c.dataset.text + ' ' + tags.join(' ')).includes(q));
+    c.classList.toggle('hidden', !show);
+    if (show) n++;
+    let tg = c.querySelector('.tags'); tg.innerHTML = '';
+    tags.forEach(t => {
+      const a = document.createElement('a');
+      a.className = 'rt' + (TYPE.includes(t) ? ' rt--type' : '') + (sel.has(t) ? ' on' : '');
+      a.textContent = t; a.href = 'javascript:void 0';
+      a.onclick = () => { sel.has(t) ? sel.delete(t) : sel.add(t); apply(); };
+      tg.appendChild(a);
+    });
+  });
+  document.getElementById('count').textContent = n + ' / ' + cards.length + ' resources';
+  document.getElementById('empty').style.display = n ? 'none' : 'block';
+}
+document.getElementById('q').oninput = apply;
+document.getElementById('clear').onclick = () => { sel.clear(); document.getElementById('q').value = ''; apply(); };
+apply();
+</script>
+</body>
+</html>

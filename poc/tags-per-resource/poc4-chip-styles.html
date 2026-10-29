@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>POC 4 · Per-entry tag style variations — Hackpot</title>
+<link rel="stylesheet" href="poc.css">
+<style>
+/* All variants share markup: .hp-tag chips at the end of the entry line.
+   Only CSS differs, so the chosen look is a style swap, not a rebuild. */
+.st-B a.hp-tag { background: none; border-color: transparent; color: #34d399; padding: .06rem .1rem; }
+.st-B a.hp-tag::before { content: "#"; opacity: .8; }
+.st-B a.hp-tag:hover { text-decoration: underline; transform: none; box-shadow: none; }
+.st-B a.hp-tag--type { color: #6ee7b7; font-weight: 700; }
+
+.st-C .ent-tags { flex-basis: 100%; margin: .1rem 0 0 0; }
+.st-C a.hp-tag { background: none; border: none; padding: 0 .35rem 0 0; font-size: .6rem; color: #64748b; }
+.st-C a.hp-tag::before { content: "\00B7\00A0"; color: #334155; }
+.st-C a.hp-tag:first-child::before { content: "\2514\00A0"; color: #10b98155; }
+.st-C a.hp-tag--type { color: #10b981; }
+.st-C a.hp-tag:hover { color: #a7f3d0; transform: none; box-shadow: none; }
+
+.st-D li { display: flex; flex-wrap: wrap; gap: .3rem; align-items: baseline; }
+.st-D .ent-main { flex: 1 1 55%; min-width: 0; }
+.st-D .ent-tags { flex: 0 1 auto; display: flex; gap: .18rem; flex-wrap: wrap; justify-content: flex-end; }
+.st-D a.hp-tag { background: transparent; border: 1px dashed #10b98166; color: #6ee7b7; }
+.st-D a.hp-tag--type { border-style: solid; background: #064e3b; }
+
+.st-E a.hp-tag { background: transparent; border: 1px solid #10b98155; color: #6ee7b7; }
+.st-E a.hp-tag--type { background: #10b981; color: #022c22; font-weight: 700; border-color: #10b981; }
+
+.st-F a.hp-tag { max-width: 0; overflow: hidden; opacity: 0; padding-left: 0; padding-right: 0; margin: 0; transition: all .18s ease; }
+.st-F li:hover a.hp-tag, .st-F li:focus-within a.hp-tag { max-width: 8rem; opacity: 1; padding: .06rem .5rem; margin: 0 .12rem; }
+.st-F .peek { font-size: .6rem; color: #64748b; font-family: "JetBrains Mono", monospace; }
+.st-F li:hover .peek, .st-F li:focus-within .peek { display: none; }
+@media (hover: none) { .st-F a.hp-tag { max-width: 8rem; opacity: 1; padding: .06rem .5rem; margin: 0 .12rem; } .st-F .peek { display: none; } }
+
+.st-G a.hp-tag { font-size: .64rem; padding: .1rem .45rem; line-height: 1.4; border: 1px solid transparent; }
+.st-G a.hp-tag--type { background: #78350f; color: #fde68a; border-color: #fbbf2466; }
+.st-G a.hp-tag--type::before { content: ""; }
+.st-G a.hp-tag { background: #083344; color: #7dd3fc; border-color: #0ea5e955; }
+.st-G a.hp-tag[href*="#t-osint"], .st-G a.hp-tag[class*="plat"] { background: #022c22; color: #6ee7b7; border-color: #10b98155; }
+h2.var { margin-top: 2.2rem; border-bottom: 1px solid #10b98133; padding-bottom: .3rem; }
+.varnote { color: #94a3b8; font-size: .82rem; margin: .2rem 0 .8rem; }
+</style>
+</head>
+<body>
+<div class="announce">Design POC — open in a browser. Not the live site.</div>
+<header class="hp-header">
+  <span class="logo">🫙 Hackpot — the jackpot of pentesting resources</span>
+  <div class="search">🔍 Search</div>
+</header>
+<div class="layout">
+<nav class="nav">
+  <div class="cat">Variations</div>
+  <a class="item" href="#va">A · Pill (baseline)</a>
+  <a class="item" href="#vb">B · Hashtag inline</a>
+  <a class="item" href="#vc">C · Quiet caption</a>
+  <a class="item" href="#vd">D · Aligned rail</a>
+  <a class="item" href="#ve">E · Outline</a>
+  <a class="item" href="#vf">F · Hover reveal</a>
+  <a class="item" href="#vg">G · Badge row</a>
+</nav>
+<main class="content">
+<div class="pocnav"><a href="index.html">← POC overview</a> <a href="poc1-inline-chips.html">← POC 1</a></div>
+
+<div class="note"><strong>POC 4 — seven looks for the same thing.</strong> POC 1's placement (tags live in the entry line)
+is kept; only the <em>visual treatment</em> varies here. All seven share identical markup, so whichever you pick is a
+pure CSS swap — the implemented Tags-page grouping (POC 1) and the live filter (POC 2) work the same in every style.
+Same five entries per section (9Ghz, Have I Been Pwned, theHarvester, SpiderFoot, Maltego — real + sample as in POC 1);
+hover chips where interactive, hover whole rows in F. Which energy do you want the list to have?</div>
+
+<!-- ============ shared entry markup, cloned per variant ============ -->
+<script type="text/plain" id="tpl">
+- [9Ghz](https://9ghz.com/) — Check if your Email/Name/Username/Phone/IC/ID/SSN/Passport/IP in any data breach. [tool][osint][credentials][password][breach]
+- [Have I Been Pwned](https://haveibeenpwned.com/) — Check if an email address is in a data breach. [tool][breach][leaks][credentials][password]
+- [theHarvester](https://github.com/laramies/theHarvester) — E-mails, subdomains and names harvested from public sources. ★ 9.7k · 92d [tool][osint][email][subdomain]
+- [SpiderFoot](https://github.com/smicallef/spiderfoot) — OSINT automation for footprinting and risk profiling targets. ★ 15k · 3y [tool][osint][automation]
+- [Maltego](https://www.maltego.com/) — Proprietary link-analysis platform for mapping OSINT entities. [tool][osint][graph][proprietary]
+</script>
+
+<h1>Tag styles for per-resource tags</h1>
+<p class="subtitle">Type chips carry a ◆ marker except where noted. Green pill = platform/tech tag.</p>
+
+<h2 class="var" id="va">A · Pill baseline — what POC 1 shipped with</h2>
+<p class="varnote">Strong presence, reads like stickers. Most scannable, but the most visual noise when tag-dense pages arrive. This is the current implementation baseline.</p>
+<ul class="entries st-A">
+  <li><a href="https://9ghz.com/">9Ghz</a> <span class="desc">— Check if your Email/Name/Username/Phone/IC/ID/SSN/Passport/IP in any data breach.</span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">◆ tool</a><a class="hp-tag">osint</a><a class="hp-tag">credentials</a><a class="hp-tag">password</a><a class="hp-tag">breach</a></span></li>
+  <li><a href="https://haveibeenpwned.com/">Have I Been Pwned</a> <span class="desc">— Check if an email address is in a data breach.</span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">◆ tool</a><a class="hp-tag">breach</a><a class="hp-tag">leaks</a><a class="hp-tag">credentials</a><a class="hp-tag">password</a></span></li>
+  <li><a href="https://github.com/laramies/theHarvester">theHarvester</a> <span class="desc">— E-mails, subdomains and names harvested from public sources.</span>
+    <span class="hp-badge hp-badge--stars">★ 9.7k</span><span class="hp-badge hp-badge--commit-active">last commit 92d</span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">◆ tool</a><a class="hp-tag">osint</a><a class="hp-tag">email</a><a class="hp-tag">subdomain</a></span></li>
+  <li><a href="https://github.com/smicallef/spiderfoot">SpiderFoot</a> <span class="desc">— OSINT automation for footprinting and risk profiling targets.</span>
+    <span class="hp-badge hp-badge--stars">★ 15k</span><span class="hp-badge hp-badge--commit-dormant">last commit 3y 44d</span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">◆ tool</a><a class="hp-tag">osint</a><a class="hp-tag">automation</a></span></li>
+  <li><a href="https://www.maltego.com/">Maltego</a> <span class="desc">— Proprietary link-analysis platform for mapping OSINT entities.</span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">◆ tool</a><a class="hp-tag">osint</a><a class="hp-tag">graph</a><a class="hp-tag">proprietary</a></span></li>
+</ul>
+
+<h2 class="var" id="vb">B · Hashtag inline — no chrome</h2>
+<p class="varnote">Tags become part of the prose like hashtags. Lowest noise, very "terminal"; but click targets are slimmer and tags compete with the description for attention.</p>
+<ul class="entries st-B">
+  <li><a href="https://9ghz.com/">9Ghz</a> <span class="desc">— Check if your Email/Name/Username/Phone/IC/ID/SSN/Passport/IP in any data breach.</span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">tool</a><a class="hp-tag">osint</a><a class="hp-tag">credentials</a><a class="hp-tag">password</a><a class="hp-tag">breach</a></span></li>
+  <li><a href="https://haveibeenpwned.com/">Have I Been Pwned</a> <span class="desc">— Check if an email address is in a data breach.</span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">tool</a><a class="hp-tag">breach</a><a class="hp-tag">leaks</a><a class="hp-tag">credentials</a><a class="hp-tag">password</a></span></li>
+  <li><a href="https://github.com/laramies/theHarvester">theHarvester</a> <span class="desc">— E-mails, subdomains and names harvested from public sources.</span>
+    <span class="hp-badge hp-badge--stars">★ 9.7k</span><span class="hp-badge hp-badge--commit-active">last commit 92d</span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">tool</a><a class="hp-tag">osint</a><a class="hp-tag">email</a><a class="hp-tag">subdomain</a></span></li>
+  <li><a href="https://github.com/smicallef/spiderfoot">SpiderFoot</a> <span class="desc">— OSINT automation for footprinting and risk profiling targets.</span>
+    <span class="hp-badge hp-badge--stars">★ 15k</span><span class="hp-badge hp-badge--commit-dormant">last commit 3y 44d</span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">tool</a><a class="hp-tag">osint</a><a class="hp-tag">automation</a></span></li>
+  <li><a href="https://www.maltego.com/">Maltego</a> <span class="desc">— Proprietary link-analysis platform for mapping OSINT entities.</span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">tool</a><a class="hp-tag">osint</a><a class="hp-tag">graph</a><a class="hp-tag">proprietary</a></span></li>
+</ul>
+
+<h2 class="var" id="vc">C · Quiet caption — tags on their own micro-line</h2>
+<p class="varnote">First line stays name+description+badges (what you scan); tags hang below as a faint monospace caption. Keeps entries readable at any tag density, costs one vertical row per tagged entry.</p>
+<ul class="entries st-C">
+  <li><a href="https://9ghz.com/">9Ghz</a> <span class="desc">— Check if your Email/Name/Username/Phone/IC/ID/SSN/Passport/IP in any data breach.</span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">tool</a><a class="hp-tag">osint</a><a class="hp-tag">credentials</a><a class="hp-tag">password</a><a class="hp-tag">breach</a></span></li>
+  <li><a href="https://haveibeenpwned.com/">Have I Been Pwned</a> <span class="desc">— Check if an email address is in a data breach.</span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">tool</a><a class="hp-tag">breach</a><a class="hp-tag">leaks</a><a class="hp-tag">credentials</a><a class="hp-tag">password</a></span></li>
+  <li><a href="https://github.com/laramies/theHarvester">theHarvester</a> <span class="desc">— E-mails, subdomains and names harvested from public sources.</span>
+    <span class="hp-badge hp-badge--stars">★ 9.7k</span><span class="hp-badge hp-badge--commit-active">last commit 92d</span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">tool</a><a class="hp-tag">osint</a><a class="hp-tag">email</a><a class="hp-tag">subdomain</a></span></li>
+  <li><a href="https://github.com/smicallef/spiderfoot">SpiderFoot</a> <span class="desc">— OSINT automation for footprinting and risk profiling targets.</span>
+    <span class="hp-badge hp-badge--stars">★ 15k</span><span class="hp-badge hp-badge--commit-dormant">last commit 3y 44d</span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">tool</a><a class="hp-tag">osint</a><a class="hp-tag">automation</a></span></li>
+  <li><a href="https://www.maltego.com/">Maltego</a> <span class="desc">— Proprietary link-analysis platform for mapping OSINT entities.</span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">tool</a><a class="hp-tag">osint</a><a class="hp-tag">graph</a><a class="hp-tag">proprietary</a></span></li>
+</ul>
+
+<h2 class="var" id="vd">D · Aligned rail — tags hug the right edge</h2>
+<p class="varnote">Description column stays stable because the tag rail is right-aligned; dashed outline distinguishes tags from solid CI badges. Needs wide-ish screens; stacks under the entry on phones. (This page already uses this layout here.)</p>
+<ul class="entries st-D">
+  <li><span class="ent-main"><a href="https://9ghz.com/">9Ghz</a> <span class="desc">— Check if your Email/Name/Username/Phone/IC/ID/SSN/Passport/IP in any data breach.</span></span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">◆ tool</a><a class="hp-tag">osint</a><a class="hp-tag">credentials</a><a class="hp-tag">password</a><a class="hp-tag">breach</a></span></li>
+  <li><span class="ent-main"><a href="https://haveibeenpwned.com/">Have I Been Pwned</a> <span class="desc">— Check if an email address is in a data breach.</span></span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">◆ tool</a><a class="hp-tag">breach</a><a class="hp-tag">leaks</a><a class="hp-tag">credentials</a><a class="hp-tag">password</a></span></li>
+  <li><span class="ent-main"><a href="https://github.com/laramies/theHarvester">theHarvester</a> <span class="desc">— E-mails, subdomains and names harvested from public sources.</span>
+    <span class="hp-badge hp-badge--stars">★ 9.7k</span><span class="hp-badge hp-badge--commit-active">last commit 92d</span></span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">◆ tool</a><a class="hp-tag">osint</a><a class="hp-tag">email</a><a class="hp-tag">subdomain</a></span></li>
+  <li><span class="ent-main"><a href="https://github.com/smicallef/spiderfoot">SpiderFoot</a> <span class="desc">— OSINT automation for footprinting and risk profiling targets.</span>
+    <span class="hp-badge hp-badge--stars">★ 15k</span><span class="hp-badge hp-badge--commit-dormant">last commit 3y 44d</span></span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">◆ tool</a><a class="hp-tag">osint</a><a class="hp-tag">automation</a></span></li>
+  <li><span class="ent-main"><a href="https://www.maltego.com/">Maltego</a> <span class="desc">— Proprietary link-analysis platform for mapping OSINT entities.</span></span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">◆ tool</a><a class="hp-tag">osint</a><a class="hp-tag">graph</a><a class="hp-tag">proprietary</a></span></li>
+</ul>
+
+<h2 class="var" id="ve">E · Outline — terminal sticker sheet</h2>
+<p class="varnote">Border-only chips, type value filled emerald as the single loud element. Lighter than A, still clearly a control; the fill on type acts as a visual "kind" anchor.</p>
+<ul class="entries st-E">
+  <li><a href="https://9ghz.com/">9Ghz</a> <span class="desc">— Check if your Email/Name/Username/Phone/IC/ID/SSN/Passport/IP in any data breach.</span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">◆ tool</a><a class="hp-tag">osint</a><a class="hp-tag">credentials</a><a class="hp-tag">password</a><a class="hp-tag">breach</a></span></li>
+  <li><a href="https://haveibeenpwned.com/">Have I Been Pwned</a> <span class="desc">— Check if an email address is in a data breach.</span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">◆ tool</a><a class="hp-tag">breach</a><a class="hp-tag">leaks</a><a class="hp-tag">credentials</a><a class="hp-tag">password</a></span></li>
+  <li><a href="https://github.com/laramies/theHarvester">theHarvester</a> <span class="desc">— E-mails, subdomains and names harvested from public sources.</span>
+    <span class="hp-badge hp-badge--stars">★ 9.7k</span><span class="hp-badge hp-badge--commit-active">last commit 92d</span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">◆ tool</a><a class="hp-tag">osint</a><a class="hp-tag">email</a><a class="hp-tag">subdomain</a></span></li>
+  <li><a href="https://github.com/smicallef/spiderfoot">SpiderFoot</a> <span class="desc">— OSINT automation for footprinting and risk profiling targets.</span>
+    <span class="hp-badge hp-badge--stars">★ 15k</span><span class="hp-badge hp-badge--commit-dormant">last commit 3y 44d</span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">◆ tool</a><a class="hp-tag">osint</a><a class="hp-tag">automation</a></span></li>
+  <li><a href="https://www.maltego.com/">Maltego</a> <span class="desc">— Proprietary link-analysis platform for mapping OSINT entities.</span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">◆ tool</a><a class="hp-tag">osint</a><a class="hp-tag">graph</a><a class="hp-tag">proprietary</a></span></li>
+</ul>
+
+<h2 class="var" id="vf">F · Hover reveal — tags only when asked</h2>
+<p class="varnote">Collapsed to a <code>⋯ 5</code> peek; hovering or keyboard-focusing the row expands the chips (touch devices always see them). Cleanest possible list, but you can't see <em>what</em> something is tagged without aiming at it — weakest discovery, and the filter toolbar becomes the primary way in. Hover a row to try.</p>
+<ul class="entries st-F">
+  <li tabindex="0"><a href="https://9ghz.com/">9Ghz</a> <span class="desc">— Check if your Email/Name/Username/Phone/IC/ID/SSN/Passport/IP in any data breach.</span><span class="peek">⋯ 5</span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">◆ tool</a><a class="hp-tag">osint</a><a class="hp-tag">credentials</a><a class="hp-tag">password</a><a class="hp-tag">breach</a></span></li>
+  <li tabindex="0"><a href="https://haveibeenpwned.com/">Have I Been Pwned</a> <span class="desc">— Check if an email address is in a data breach.</span><span class="peek">⋯ 5</span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">◆ tool</a><a class="hp-tag">breach</a><a class="hp-tag">leaks</a><a class="hp-tag">credentials</a><a class="hp-tag">password</a></span></li>
+  <li tabindex="0"><a href="https://github.com/laramies/theHarvester">theHarvester</a> <span class="desc">— E-mails, subdomains and names harvested from public sources.</span>
+    <span class="hp-badge hp-badge--stars">★ 9.7k</span><span class="hp-badge hp-badge--commit-active">last commit 92d</span><span class="peek">⋯ 4</span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">◆ tool</a><a class="hp-tag">osint</a><a class="hp-tag">email</a><a class="hp-tag">subdomain</a></span></li>
+  <li tabindex="0"><a href="https://github.com/smicallef/spiderfoot">SpiderFoot</a> <span class="desc">— OSINT automation for footprinting and risk profiling targets.</span>
+    <span class="hp-badge hp-badge--stars">★ 15k</span><span class="hp-badge hp-badge--commit-dormant">last commit 3y 44d</span><span class="peek">⋯ 3</span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">◆ tool</a><a class="hp-tag">osint</a><a class="hp-tag">automation</a></span></li>
+  <li tabindex="0"><a href="https://www.maltego.com/">Maltego</a> <span class="desc">— Proprietary link-analysis platform for mapping OSINT entities.</span><span class="peek">⋯ 4</span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">◆ tool</a><a class="hp-tag">osint</a><a class="hp-tag">graph</a><a class="hp-tag">proprietary</a></span></li>
+</ul>
+
+<h2 class="var" id="vg">G · Badge row — tags join the CI pills</h2>
+<p class="varnote">Tags use the exact geometry of the ★/last-commit badges and sit in one metadata row before them: amber = type (same family as stars), sky-blue = tech, emerald = platform. Reads as one data strip; risk of feeling like everything is a badge if the list grows colorful.</p>
+<ul class="entries st-G">
+  <li><a href="https://9ghz.com/">9Ghz</a> <span class="desc">— Check if your Email/Name/Username/Phone/IC/ID/SSN/Passport/IP in any data breach.</span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">tool</a><a class="hp-tag plat">osint</a><a class="hp-tag">credentials</a><a class="hp-tag">password</a><a class="hp-tag">breach</a></span></li>
+  <li><a href="https://haveibeenpwned.com/">Have I Been Pwned</a> <span class="desc">— Check if an email address is in a data breach.</span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">tool</a><a class="hp-tag">breach</a><a class="hp-tag">leaks</a><a class="hp-tag">credentials</a><a class="hp-tag">password</a></span></li>
+  <li><a href="https://github.com/laramies/theHarvester">theHarvester</a> <span class="desc">— E-mails, subdomains and names harvested from public sources.</span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">tool</a><a class="hp-tag plat">osint</a><a class="hp-tag">email</a><a class="hp-tag">subdomain</a></span>
+    <span class="hp-badge hp-badge--stars">★ 9.7k</span><span class="hp-badge hp-badge--commit-active">last commit 92d</span></li>
+  <li><a href="https://github.com/smicallef/spiderfoot">SpiderFoot</a> <span class="desc">— OSINT automation for footprinting and risk profiling targets.</span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">tool</a><a class="hp-tag plat">osint</a><a class="hp-tag">automation</a></span>
+    <span class="hp-badge hp-badge--stars">★ 15k</span><span class="hp-badge hp-badge--commit-dormant">last commit 3y 44d</span></li>
+  <li><a href="https://www.maltego.com/">Maltego</a> <span class="desc">— Proprietary link-analysis platform for mapping OSINT entities.</span>
+    <span class="ent-tags"><a class="hp-tag hp-tag--type">tool</a><a class="hp-tag plat">osint</a><a class="hp-tag">graph</a><a class="hp-tag">proprietary</a></span></li>
+</ul>
+
+<div class="diff"><strong>Recommendation (not a decision for me to make alone):</strong> D or G for scannability once pages
+get tag-dense; B/C if you want the list prose-first. A stays the safe baseline; F is the most minimal but costs
+discovery. Markup and behavior are identical across all seven, so this is purely about look — say which and
+it lands in <code>theme.css</code> only.</div>
+
+<div class="foot">POC mock — not the live site. Back to <a href="index.html">POC overview</a>.</div>
+</main>
+<aside class="toc">
+  <div class="t">Variations</div>
+  <div>A · Pill baseline</div>
+  <div>B · Hashtag inline</div>
+  <div>C · Quiet caption</div>
+  <div>D · Aligned rail</div>
+  <div>E · Outline</div>
+  <div>F · Hover reveal</div>
+  <div>G · Badge row</div>
+</aside>
+</div>
+</body>
+</html>

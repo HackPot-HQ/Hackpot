@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>POC 2 · Live tag filter on category pages — Hackpot</title>
+<link rel="stylesheet" href="poc.css">
+</head>
+<body>
+<div class="announce">🔗 Links, stars and freshness last checked by CI: <strong>2026-10-27</strong></div>
+<header class="hp-header">
+  <span class="logo">🫙 Hackpot — the jackpot of pentesting resources</span>
+  <div class="search">🔍 Search</div>
+</header>
+<div class="layout">
+<nav class="nav">
+  <div class="cat">05 · Exploitation and PrivEsc</div>
+  <a class="item active" href="#">Linux Privilege Escalation</a>
+  <a class="item" href="#">macOS Privilege Escalation</a>
+  <a class="item" href="#">Windows Privilege Escalation</a>
+  <a class="item" href="#">Exploitation Frameworks</a>
+  <div class="cat">Site</div>
+  <a class="item" href="#">Home</a>
+  <a class="item" href="#">Tags</a>
+</nav>
+<main class="content">
+<div class="pocnav"><a href="index.html">← POC overview</a> <a href="poc1-inline-chips.html">← POC 1</a> <a href="poc3-resource-catalog.html">POC 3: catalog cards →</a></div>
+
+<div class="note"><strong>POC 2 — “filter the list in place”.</strong> Same page, same entries, but a sticky chip toolbar
+lets you click tags and the list filters live (AND semantics, all selected tags must match on a single resource).
+The chips inside each entry are clickable too — clicking one adds it to the filter. The URL hash
+(<code>#filter=linux+privesc</code>) carries the selection, so a filtered view is shareable and deep-linkable.
+This is the “GitHub issues label filter” model. <em>Linux PrivEsc entries are sample data in real entry format
+(the category is still empty in the catalog); badges mimic CI-injected star/freshness values.</em> Try it: click chips below.</div>
+
+<h1>Linux Privilege Escalation</h1>
+<p class="subtitle">Scripts, exploits, and tools to elevate privileges on Linux systems.</p>
+
+<div class="filterbar">
+  <span class="lbl">Type</span>
+  <span id="types"></span>
+  <div style="margin-top:.45rem"><span class="lbl">Tags</span><span id="tagbar"></span></div>
+  <div style="margin-top:.45rem"><span class="count" id="count"></span>
+    <button class="clear" id="clear" style="margin-left:.6rem">clear ✕</button></div>
+</div>
+
+<h2 id="resources">Resources</h2>
+<ul class="entries" id="list">
+  <li data-tags="tool linux enumeration privesc"><a href="https://github.com/peass-ng/PEASS-ng">LinPEAS</a> <span class="desc">— Privilege Escalation Awesome Scripts SUITE: enumerates every common privesc vector in one run.</span>
+    <span class="hp-badge hp-badge--stars">★ 13k</span><span class="hp-badge hp-badge--commit">last commit 4d</span></li>
+  <li data-tags="tool linux enumeration privesc"><a href="https://github.com/mebu/lse">linux-smart-enumeration</a> <span class="desc">— Colourised, low-noise Linux privesc enumeration with hints per finding.</span>
+    <span class="hp-badge hp-badge--stars">★ 1.4k</span><span class="hp-badge hp-badge--commit-dormant">last commit 4y 30d</span></li>
+  <li data-tags="tool linux kernel cve enumeration"><a href="https://github.com/PentestMonkey/linux-exploit-suggester">Linux Exploit Suggester</a> <span class="desc">— Matches running kernel version against known public exploits.</span>
+    <span class="hp-badge hp-badge--stars">★ 3.5k</span><span class="hp-badge hp-badge--commit-dormant">last commit 5y 200d</span></li>
+  <li data-tags="tool linux kernel mitigations"><a href="https://github.com/sleske/checksec.sh">checksec.sh</a> <span class="desc">— Table-format kernel, libc and binary mitigation inspection (ASLR, seccomp, RELRO…).</span>
+    <span class="hp-badge hp-badge--stars">★ 1.1k</span><span class="hp-badge hp-badge--commit-active">last commit 120d</span></li>
+  <li data-tags="tool linux container privesc cve"><a href="https://github.com/cdkyers/linaftp">linaftp</a> <span class="desc">— Collection of container escape / privesc techniques with runnable PoCs.</span>
+    <span class="hp-badge hp-badge--stars">★ 1.1k</span><span class="hp-badge hp-badge--commit-dormant">last commit 3y 90d</span></li>
+  <li data-tags="tool linux audit privesc"><a href="https://github.com/paulsec/linux-privesc-check">linux-privesc-check</a> <span class="desc">— Standalone binary that audits file permissions and paths for local privilege escalation flaws.</span>
+    <span class="hp-badge hp-badge--stars">★ 800</span><span class="hp-badge hp-badge--commit-dormant">last commit 6y</span></li>
+  <li data-tags="tool linux process enumeration"><a href="https://github.com/cdddbg/pspy">pspy</a> <span class="desc">— Monitor processes and cron jobs without root privileges — ideal for race-condition hunting.</span>
+    <span class="hp-badge hp-badge--stars">★ 4.4k</span><span class="hp-badge hp-badge--commit-aging">last commit 1y 210d</span></li>
+  <li data-tags="docs linux privesc cheatsheet"><a href="https://gtfobins.github.io/">GTFOBins</a> <span class="desc">— Curated list of Unix binaries that can be abused to escalate or break out.</span>
+    <span class="hp-badge hp-badge--stars">★ 14k</span><span class="hp-badge hp-badge--commit">last commit 12d</span></li>
+  <li data-tags="docs linux privesc cheatsheet enumeration"><a href="https://hacktricks.wiki/en/linux-hardening/privilege-escalation/index.html">HackTricks — Linux PrivEsc</a> <span class="desc">— The community knowledge base chapter covering every privesc technique in depth.</span></li>
+  <li data-tags="lab linux privesc training"><a href="https://academy.hackthebox.com/module/details/89">HTB Academy — Linux Privilege Escalation</a> <span class="desc">— Guided module with in-browser labs from enumeration to kernel exploits.</span></li>
+  <li data-tags="article linux privesc"><a href="https://www.redhat.com/en/blog/a-penetration-testers-guide-to-privilege-escalation-on-linux-part-1">Red Hat — A pentester's guide to privesc</a> <span class="desc">— Well-structured walkthrough of the standard misconfiguration classes.</span></li>
+</ul>
+<p class="count hidden" id="empty" style="display:none;color:#fca5a5">No resource matches this tag combination.</p>
+
+<div class="diff"><strong>What changes vs today:</strong> per-page footer bubbles are replaced by per-entry chips (as in POC 1)
+plus one filter bar derived from the tags actually present on the page. Implementation: build emits
+<code>data-tags</code> per <code>&lt;li&gt;</code> (the parser already sees each entry's tokens) and ~60 lines of
+theme JS. Without JS the page degrades to POC 1 (static chips). Tags that live on other pages stay reachable through
+the global Tags index.</div>
+
+<div class="foot">POC mock — not the live site. Back to <a href="index.html">POC overview</a>.</div>
+</main>
+<aside class="toc">
+  <div class="t">On this page</div>
+  <div>Resources</div>
+  <div style="margin-top:.6rem;color:#fbbf24">interactive demo: click chips or toolbar</div>
+</aside>
+</div>
+
+<script>
+// POC 2 — live AND-filter over per-resource tags. Vanilla JS, ~60 lines.
+const items = [...document.querySelectorAll('#list li')];
+const all = new Map();                       // tag -> count on this page
+items.forEach(li => li.dataset.tags.split(' ').forEach(t => all.set(t, (all.get(t) || 0) + 1)));
+const typeTags = [...all.keys()].filter(t => ['tool','docs','lab','article','video','course','wordlist'].includes(t));
+const flat = [...all.keys()].filter(t => !typeTags.includes(t)).sort((a,b) => all.get(b) - all.get(a));
+const sel = new Set();
+
+function render(bar, tags) {
+  bar.innerHTML = '';
+  tags.forEach(t => {
+    const c = document.createElement('a');
+    c.className = 'rt' + (typeTags.includes(t) ? ' rt--type' : '') + (sel.has(t) ? ' on' : '');
+    c.textContent = t + ' ' + all.get(t);
+    c.href = 'javascript:void 0';
+    c.onclick = () => toggle(t);
+    bar.appendChild(c);
+  });
+}
+function toggle(t) { sel.has(t) ? sel.delete(t) : sel.add(t); apply(); }
+function apply() {
+  render(document.getElementById('types'), typeTags);
+  render(document.getElementById('tagbar'), flat);
+  let n = 0;
+  items.forEach(li => {
+    const tags = li.dataset.tags.split(' ');
+    const show = [...sel].every(t => tags.includes(t));
+    li.classList.toggle('hidden', !show);
+    if (show) n++;
+    // chips inside visible entries
+    let chips = li.querySelector('.chips');
+    if (!chips) { chips = document.createElement('span'); chips.className = 'chips'; chips.style.marginLeft = '.4rem'; li.appendChild(chips); }
+    chips.innerHTML = '';
+    tags.forEach(t => {
+      const a = document.createElement('a');
+      a.className = 'rt' + (typeTags.includes(t) ? ' rt--type' : '') + (sel.has(t) ? ' on' : '');
+      a.textContent = t; a.href = 'javascript:void 0'; a.title = 'filter by ' + t;
+      a.onclick = () => toggle(t);
+      chips.appendChild(a);
+    });
+  });
+  document.getElementById('count').textContent = n + ' / ' + items.length + ' resources';
+  document.getElementById('empty').style.display = n ? 'none' : 'block';
+  history.replaceState(null, '', sel.size ? '#filter=' + [...sel].join('+') : location.pathname);
+}
+const m = location.hash.match(/^#filter=(.+)$/);
+if (m) m[1].split('+').forEach(t => { if (all.has(t)) sel.add(t); });
+apply();
+</script>
+</body>
+</html>

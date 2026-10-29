@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>POCs · Tags per resource, not per page — Hackpot</title>
+<link rel="stylesheet" href="poc.css">
+</head>
+<body>
+<div class="announce">Design POCs — open these files in a browser. Not the live site.</div>
+<header class="hp-header">
+  <span class="logo">🫙 Hackpot — the jackpot of pentesting resources</span>
+  <div class="search">🔍 Search</div>
+</header>
+<div class="layout">
+<nav class="nav">
+  <div class="cat">POCs</div>
+  <a class="item active" href="#">Overview</a>
+  <a class="item" href="poc1-inline-chips.html">POC 1 · Inline chips</a>
+  <a class="item" href="poc2-live-filter.html">POC 2 · Live filter</a>
+  <a class="item" href="poc3-resource-catalog.html">POC 3 · Resource catalog</a>
+  <a class="item" href="poc4-chip-styles.html">POC 4 · Tag style variations</a>
+</nav>
+<main class="content">
+
+<h1>What if tags belonged to each <em>resource</em>, not each page?</h1>
+<p class="subtitle">Three visual POCs of the same site frame, same theme, same entry format — different tag models.</p>
+
+<h2>The status quo</h2>
+<p>Contributors already write tags <strong>per entry</strong> in the READMEs:
+<code>- [9Ghz](https://9ghz.com/) — … `type:tool` `osint` `breach`</code>. But
+<code>scripts/build_site.py</code> flattens them: <code>page_tags()</code> unions every entry's tokens into the page
+front matter, <code>drop_tag_tokens</code> strips them from the entry text, and the tags plugin renders them as
+page-footer bubbles + a tag index that resolves <strong>tag → page</strong>.</p>
+<p>The consequence you can see on the live site today:</p>
+<ul class="entries">
+  <li>🔍 Clicking <code>linux</code> on the tag index shows you the <em>Linux PrivEsc page</em> — even when the tag came
+  from one buried entry on a page whose other 25 resources are unrelated.</li>
+  <li>🫕 A page with 30 resources shows one merged bubble strip — you cannot tell <em>which</em> resource has <code>breach</code>.</li>
+  <li>🚫 No way to answer “give me every resource tagged <code>firmware</code>, wherever it lives”.</li>
+</ul>
+
+<div class="diff">All three POCs keep the contributor workflow 100% identical — trailing backticks per entry — and change only
+how the build renders that data. Real repo entries are used where they exist (9Ghz, Have I Been Pwned, HackBar,
+impactor, mithril, Offensive-Security-AI-Models, HackTricks); sparse categories are filled with sample entries in the
+exact CONTRIBUTING format, labeled as such in each POC.</div>
+
+<h2>The three proposals</h2>
+<table class="tbl">
+  <tr><th></th><th>Concept</th><th>Tag index becomes</th><th>Interaction</th><th>Implementation cost</th></tr>
+  <tr>
+    <td><a href="poc1-inline-chips.html"><strong>POC 1 · Inline chips</strong></a></td>
+    <td>Each entry shows its own tag chips in the line (type chips get a ◆ marker). Footer bubbles deleted.</td>
+    <td>tag → <strong>list of resources</strong> with category breadcrumb + anchor link into the page.</td>
+    <td>None needed — static anchor links.</td>
+    <td>Lowest: <code>build_site.py</code> keeps per-entry ownership instead of unioning; chips rendered in transform; plugin template lists entries.</td>
+  </tr>
+  <tr>
+    <td><a href="poc2-live-filter.html"><strong>POC 2 · Live filter</strong></a></td>
+    <td>POC 1 chips + a sticky chip toolbar on every category page; clicking filters the list in place (AND).</td>
+    <td>Same as POC 1, plus each category page is self-filterable.</td>
+    <td>~60 lines vanilla JS; deep-linkable via <code>#filter=linux+privesc</code>. Degrades to POC 1 without JS.</td>
+    <td>Low: build emits <code>data-tags</code> on each <code>&lt;li&gt;</code> + one JS file in the theme.</td>
+  </tr>
+  <tr>
+    <td><a href="poc4-chip-styles.html"><strong>POC 4 · Tag style variations</strong></a></td>
+    <td>Seven visual treatments (pill, hashtag, caption, rail, outline, hover-reveal, badge-row) for the same per-entry tag markup.</td>
+    <td>n/a — styling layer only.</td>
+    <td>Identical markup across all seven; only CSS differs.</td>
+    <td>Pure CSS swap after picking.</td>
+  </tr>
+  <tr>
+    <td><a href="poc3-resource-catalog.html"><strong>POC 3 · Resource catalog</strong></a></td>
+    <td>A new global <code>/catalog/</code> page: every resource as a card (category, badges, tags) with a site-wide tag-cloud sidebar + search.</td>
+    <td>The catalog <em>is</em> the index; the tag page collapses into it.</td>
+    <td>Full cross-category filtering by tags, type, and text.</td>
+    <td>Highest: extra generated page (~one template + JS index buildable from the same meta the search plugin already ships).</td>
+  </tr>
+</table>
+
+<h2>How they relate</h2>
+<p>They are <strong>stackable, not exclusive</strong>: POC 1 is the data-model fix (tags render where they belong),
+POC 2 adds page-local browsing, POC 3 adds cross-category browsing. A sensible landing zone is 1 + 2 first (they share
+the same emitted markup), then 3 once tag coverage across the catalog grows enough for the cloud to be useful — today
+only a handful of entries carry tags, so a global catalog would look thin.</p>
+
+<div class="note"><strong>Open questions if you want to adopt one:</strong> anchor-id stability when entries are renamed
+(reordering is fine), whether <code>type:</code> values should stay a separate facet (all three POCs render them
+distinctly) or dissolve into tags, and whether search should start accepting <code>tag:linux</code> query syntax
+(Zensical's search plugin already indexes page tags; per-resource tags would need the token kept in the entry text,
+which POC 1/2/3 all do).</div>
+
+<div class="foot">Files: <code>poc/tags-per-resource/</code> — index.html, poc1-inline-chips.html, poc2-live-filter.html,
+poc3-resource-catalog.html, poc.css. Nothing here touches <code>build_site.py</code>, <code>docs/</code>, or <code>site/</code>.</div>
+</main>
+<aside class="toc">
+  <div class="t">On this page</div>
+  <div>Status quo</div>
+  <div>The three proposals</div>
+  <div>How they relate</div>
+</aside>
+</div>
+</body>
+</html>
