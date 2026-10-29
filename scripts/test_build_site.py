@@ -19,7 +19,7 @@ def cached_build():
     if not _BUILD_CACHE:
         tmp = tempfile.mkdtemp(prefix="hackpot_build_site_")
         out = pathlib.Path(tmp) / "docs"
-        build_site.build(out, repo_url="https://github.com/J0nan/Hackpot")
+        build_site.build(out, repo_url="https://github.com/HackPot-HQ/Hackpot")
         _BUILD_CACHE.append((tmp, out))
         import atexit
         atexit.register(lambda: [shutil.rmtree(t, ignore_errors=True) for t, _ in _BUILD_CACHE])
@@ -251,7 +251,7 @@ class Badges(unittest.TestCase):
     def test_entry_lines_survive_transform(self):
         # Differential pin: content pages must keep their entry bullets.
         src = "# T\n\n- [HackBar](https://github.com/d3vilbug/HackBar) — x. `type:tool` `linux`\n"
-        out = build_site.transform(src, {}, "https://github.com/J0nan/Hackpot")
+        out = build_site.transform(src, {}, "https://github.com/HackPot-HQ/Hackpot")
         self.assertIn("- [HackBar](https://github.com/d3vilbug/HackBar)", out)
         self.assertIn("`type:tool`", out)
 
