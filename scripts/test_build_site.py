@@ -340,11 +340,20 @@ class NightshellTheme(unittest.TestCase):
 
     def test_chip_and_filterbar_palette_ships(self):
         css = (self.docs / "stylesheets" / "theme.css").read_text(encoding="utf-8")
-        # Baseline "Pill" look (POC4 style A) + light scheme + on-state for
-        # the filter toolbar; final visual pick is a CSS-only swap (S3).
-        self.assertIn(".hp-tag {", css)
-        self.assertIn('.hp-tag--type { background: #022c22; color: #a7f3d0;', css)
-        self.assertIn('[data-md-color-scheme="default"] .hp-tag', css)
+        # User pick (2026-10-29): POC4 style E "Outline" — border-only chips,
+        # type value filled emerald as the single loud element. Cascade order
+        # matters: each fill rule must come after the rule it overrides.
+        self.assertIn("a.hp-tag {", css)
+        self.assertIn("background: transparent; color: #6ee7b7; border: 1px solid #10b98155;", css)
+        self.assertIn('a.hp-tag--type { background: #10b981; color: #022c22; font-weight: 700;', css)
+        self.assertIn('[data-md-color-scheme="default"] .hp-tag { background: transparent;', css)
+        self.assertIn('[data-md-color-scheme="default"] a.hp-tag--type { background: #10b981;', css)
+        self.assertLess(css.index("a.hp-tag {"), css.index("a.hp-tag--type {"))
+        self.assertLess(css.index('[data-md-color-scheme="default"] .hp-tag {'),
+                        css.index('[data-md-color-scheme="default"] a.hp-tag--type {'))
+        # Filter toolbar on-state still paints after every base/light rule.
+        self.assertLess(css.index('[data-md-color-scheme="default"] a.hp-tag--type'),
+                        css.index(".hp-tag.on"))
         self.assertIn(".hp-tag.on", css)
         self.assertIn(".hp-filterbar", css)
 
