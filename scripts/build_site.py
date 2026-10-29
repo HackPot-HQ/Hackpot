@@ -319,6 +319,7 @@ a.hp-tag--type::before { content: "\\25C6 "; font-size: .55rem; }
 [data-md-color-scheme="default"] .hp-tag { background: transparent; color: #065f46; border-color: #10b98199; }
 [data-md-color-scheme="default"] a.hp-tag--type { background: #10b981; color: #022c22; border-color: #10b981; }
 a.hp-tag.on { background: #10b981; color: #022c22; font-weight: 700; border-color: #10b981; }
+a.hp-tag.on::after { content: " \\2713"; font-weight: 700; }
 .hp-tags { display: inline; }
 a.hp-tag:hover { transform: translateY(-2px); box-shadow: 0 4px 14px #10b9813d; filter: brightness(1.12); }
 a.hp-tag:active { transform: translateY(0); box-shadow: 0 1px 4px #10b98133; }

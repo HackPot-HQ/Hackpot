@@ -355,6 +355,10 @@ class NightshellTheme(unittest.TestCase):
         self.assertLess(css.index('[data-md-color-scheme="default"] a.hp-tag--type'),
                         css.index(".hp-tag.on"))
         self.assertIn(".hp-tag.on", css)
+        # Selected chips must be unmistakable even when the fill already is
+        # the accent (type chips under the outline style): a check glyph is
+        # appended to every on-state chip, toolbar and inline alike.
+        self.assertIn('a.hp-tag.on::after { content: " \\2713"; font-weight: 700; }', css)
         self.assertIn(".hp-filterbar", css)
 
     def test_hero_padding_is_fluid(self):
