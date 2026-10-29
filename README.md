@@ -6,6 +6,8 @@ A curated, category-first index of useful resources for penetration testers and 
 
 Categories follow the kill chain: recon → initial access → foothold and operations → target surfaces → analysis disciplines → references.
 
+> This website was built with the help of AI, but the content is added and classified by humans.
+
 ## Categories
 
 | Category | What you'll find |
