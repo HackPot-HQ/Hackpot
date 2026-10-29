@@ -1,6 +1,7 @@
 """Regression tests for scripts/build_site.py."""
 
 import pathlib
+import re
 import shutil
 import sys
 import tempfile
@@ -123,6 +124,15 @@ class EntryTags(unittest.TestCase):
             "- [9Ghz](https://9ghz.com/) — x. `type:tool` `breach`\n",
             {}, None, tagged=True, tags_href="tags.md", sink=sink)
         self.assertEqual(sink, [("9Ghz", "e-9ghz", [("tool", True), ("breach", False)])])
+
+    def test_adjacent_inline_code_pins_current_semantics(self):
+        # Advisory (verifier, 2026-10-29): a token directly abutting the
+        # trailing run is captured — same-or-worse at baseline b31023b, where
+        # page_tags scanned the whole line. Pinned so a future change to this
+        # boundary is a deliberate decision, not an accident.
+        self.assertEqual(
+            build_site.entry_tags("- [N](u) — runs `nmap` `tool`"),
+            [("nmap", False), ("tool", False)])
 
     def test_tags_page_renders_resources_grouped_by_tag(self):
         hub = build_site.render_tags({
@@ -419,6 +429,25 @@ class TagPerResource(unittest.TestCase):
         self.assertIn('href="../../tags.md#t-burp"', leaf_text)
         self.assertNotIn("`type:tool`", leaf_text)
         self.assertNotIn("`burp`", leaf_text)
+
+    def test_hub_links_resolve_to_entry_anchors(self):
+        # S1 end-to-end: every resource link in the generated hub must point
+        # at an anchor that actually exists in the linked generated page.
+        hub = (self.docs / "tags.md").read_text(encoding="utf-8")
+        links = re.findall(r"^- \[[^\]]+\]\(([^)]+)\)", hub, re.M)
+        self.assertGreaterEqual(len(links), 6, "hub unexpectedly empty")
+        for target in links:
+            path, frag = target.split("#", 1)
+            page = (self.docs / path).read_text(encoding="utf-8")
+            self.assertIn(f'<a id="{frag}"></a>', page, f"{target} dangling")
+
+    def test_chip_hrefs_target_existing_hub_anchors(self):
+        # S1/S2: every chip's #t-... href must exist on the hub.
+        hub = (self.docs / "tags.md").read_text(encoding="utf-8")
+        for p in self.docs.rglob("*.md"):
+            for frag in set(re.findall(r'href="[^"]*#(t-[^"]+)"',
+                                       p.read_text(encoding="utf-8"))):
+                self.assertIn(f'id="{frag}"', hub, f"{p.name} -> {frag}")
 
     def test_contributing_example_stays_literal(self):
         # S5: contributor docs keep the raw token format they teach.
