@@ -44,10 +44,13 @@ class EmittedConfig(unittest.TestCase):
         self.assertIn('site_dir: "site"', self.yml)
         self.assertIn('docs_dir: "docs"', self.yml)
 
-    def test_search_and_tags_plugins(self):
-        # Built-in search configured via the search entry; native tags plugin.
+    def test_search_plugin_and_tags_filter_script(self):
+        # S1/S2: the native tags plugin is dropped (no more page-level bubbles);
+        # the tag hub is generator-authored and filtering ships as a script.
         self.assertRegex(self.yml, r"(?m)^\s*-\s*\"?search\"?\s*$")
-        self.assertRegex(self.yml, r"(?m)^\s*-\s*\"?tags\"?\s*$")
+        self.assertNotRegex(self.yml, r"(?m)^\s*-\s*\"?tags\"?\s*$")
+        self.assertIn("extra_javascript:", self.yml)
+        self.assertIn('"javascripts/tags-filter.js"', self.yml)
 
     def test_search_highlight_feature(self):
         self.assertIn('"search.highlight"', self.yml)
@@ -64,49 +67,81 @@ class EmittedConfig(unittest.TestCase):
             self.assertIn(needle, self.yml)
 
 
-class PageTags(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.docs = cached_build()
+class EntryTags(unittest.TestCase):
+    # S3/S4: tags belong to one resource, not to the page.
 
-    def test_controlled_tag_extraction_and_yaml_escaping(self):
-        # Hermetic unit for the tag pipeline: namespace stripping (including
-        # a space after the prefix), dedupe, whitespace, empty values, and
-        # exact YAML-safe emission of quote/backslash-bearing tags.
-        src = (
-            "# T\n\n"
-            "- [A](https://x.test/a) — a. `type:tool` ` linux ` `dup` `dup`\n"
-            "- [B](https://x.test/b) — b. `type:` `type: spaced` `wei\"rd` `back\\slash`\n"
-            "Not a list item: `ignored`\n"
+    def test_controlled_entry_tag_extraction(self):
+        # Hermetic unit: type: stripping (incl. a space after the prefix),
+        # dedupe, whitespace, empty values, and — unlike the old page-level
+        # aggregation — ONLY the trailing run counts (inline code like
+        # `nmap` in a description is not a tag).
+        cases = (
+            ("- [A](u) — a. `type:tool` ` linux ` `dup` `dup`",
+             [("tool", True), ("linux", False), ("dup", False)]),
+            ("- [B](u) — b. `type:` `type: spaced`", [("spaced", True)]),
+            ("- [C](u) — uses `nmap` scripts. `linux`", [("linux", False)]),
+            ("- [D](u) — no tags at all", []),
+            ("Not a list item: `ignored`", []),
         )
-        self.assertEqual(build_site.page_tags(src),
-                         ["tool", "linux", "dup", "spaced", 'wei"rd', "back\\slash"])
-        # Exact emission (not just "escape chars appear somewhere"): the
-        # document must be a tags list of properly escaped scalars.
-        self.assertEqual(
-            build_site.front_matter(['wei"rd', "back\\slash"]),
-            '---\ntags:\n- "wei\\"rd"\n- "back\\\\slash"\n---\n')
-        self.assertEqual(build_site.front_matter([]), "")
+        for src, want in cases:
+            self.assertEqual(build_site.entry_tags(src), want, src)
 
-    def test_leaf_pages_get_tags_front_matter_from_source_tokens(self):
-        # Tokens in source READMEs become page-level tags. Since generated
-        # bodies have their inline tokens stripped, discovery goes via front
-        # matter.
-        tagged = None
-        for p in self.docs.rglob("index.md"):
-            if p.parent == self.docs:
-                continue
-            text = p.read_text(encoding="utf-8")
-            if text.startswith("---\ntags:\n"):
-                tagged = p
-                break
-        self.assertIsNotNone(tagged, "no page with tags front matter found")
-        front = tagged.read_text(encoding="utf-8").split("---\n", 2)[1]
-        self.assertRegex(front, r"(?m)- \"(tool|docs)\"")
+    def test_tagged_transform_emits_anchor_and_chips_exactly(self):
+        out = build_site.transform(
+            "- [X](https://x.test) — does things. `type:tool` `linux`\n",
+            {}, None, tagged=True, tags_href="../../tags.md")
+        self.assertEqual(
+            out,
+            '- <a id="e-x"></a>[X](https://x.test) — does things.'
+            ' <span class="hp-tags">'
+            '<a class="hp-tag hp-tag--type" data-tag="tool"'
+            ' href="../../tags.md#t-tool">tool</a>'
+            '<a class="hp-tag" data-tag="linux"'
+            ' href="../../tags.md#t-linux">linux</a></span>\n')
+
+    def test_untagged_transform_unchanged_old_contract(self):
+        # S5: home/contributing keep literal tokens as source documentation.
+        src = "- [X](https://x.test) — does things. `type:tool` `linux`\n"
+        self.assertEqual(build_site.transform(src, {}, None), src)
+
+    def test_duplicate_names_get_unique_anchors(self):
+        src = ("- [Same Name](https://x.test/1) — one. `x`\n"
+               "- [Same Name](https://x.test/2) — two. `x`\n")
+        out = build_site.transform(src, {}, None, tagged=True, tags_href="tags.md")
+        self.assertIn('<a id="e-same-name"></a>', out)
+        self.assertIn('<a id="e-same-name-2"></a>', out)
+
+    def test_tagged_transform_keeps_inline_code_and_drops_tokens(self):
+        src = "- [X](https://x.test) — uses `nmap` scripts. `type:tool` `linux`\n"
+        out = build_site.transform(src, {}, None, tagged=True, tags_href="tags.md")
+        self.assertIn("uses `nmap` scripts.", out)
+        self.assertNotIn("`linux`", out)
+
+    def test_sink_collects_per_entry_tag_index(self):
+        sink = []
+        build_site.transform(
+            "- [9Ghz](https://9ghz.com/) — x. `type:tool` `breach`\n",
+            {}, None, tagged=True, tags_href="tags.md", sink=sink)
+        self.assertEqual(sink, [("9Ghz", "e-9ghz", [("tool", True), ("breach", False)])])
+
+    def test_tags_page_renders_resources_grouped_by_tag(self):
+        hub = build_site.render_tags({
+            "breach": [("9Ghz", "01_Recon_and_OSINT/OSINT/index.md", "e-9ghz",
+                        "01 · Recon and OSINT / OSINT")],
+            "tool": [("9Ghz", "01_Recon_and_OSINT/OSINT/index.md", "e-9ghz",
+                      "01 · Recon and OSINT / OSINT")],
+        })
+        self.assertTrue(hub.startswith("# Tags"))
+        self.assertIn('<a id="t-breach"></a>\n## breach\n', hub)
+        self.assertIn("- [9Ghz](01_Recon_and_OSINT/OSINT/index.md#e-9ghz) — "
+                      "01 · Recon and OSINT / OSINT", hub)
+        # sections sorted case-insensitively by tag
+        self.assertLess(hub.index("t-breach"), hub.index("t-tool"))
 
     def test_home_and_contributing_have_no_front_matter(self):
+        docs = cached_build()
         for name in ("index.md", "contributing.md"):
-            p = self.docs / name
+            p = docs / name
             self.assertTrue(p.exists(), f"generator stopped emitting {name}")
             self.assertFalse(p.read_text(encoding="utf-8").startswith("---\n"))
 
@@ -232,10 +267,12 @@ class NightshellTheme(unittest.TestCase):
         self.assertIn('url("fonts/inter-latin-var.woff2")', css)
         self.assertIn('url("fonts/jetbrains-mono-latin-var.woff2")', css)
         self.assertIn(".hp-hero", css)
-        # "Soft Lift" hover style on tag chips.
-        self.assertIn("a.md-tag:hover { transform: translateY(-2px)", css)
-        self.assertIn("a.md-tag { transition:", css)
-        self.assertIn("a.md-tag:active", css)
+        # "Soft Lift" hover style, now on the per-entry tag chips (S6).
+        self.assertIn("a.hp-tag:hover { transform: translateY(-2px)", css)
+        self.assertIn("a.hp-tag {", css)
+        self.assertIn("a.hp-tag:active", css)
+        # Bubbles are gone: the plugin's md-tag styling must not linger.
+        self.assertNotIn("md-tag", css)
         # Fonts are hosted in the repo: no CDN.
         self.assertNotIn("fonts.googleapis.com", css)
         self.assertNotIn("fonts.gstatic.com", css)
@@ -282,14 +319,24 @@ class NightshellTheme(unittest.TestCase):
         # after a tap and makes pills ride over the surrounding text.
         self.assertIn("@media (hover: none) { .hp-badge:hover { transform: none;", css)
 
-    def test_tag_bubbles_no_sticky_hover_on_touch(self):
+    def test_tag_chips_no_sticky_hover_on_touch(self):
         css = (self.docs / "stylesheets" / "theme.css").read_text(encoding="utf-8")
-        # The tag bubbles lift -2px on hover; on touch that lift sticks after
-        # a tap, so the guard must cover them the same way it covers pills.
+        # Chips lift -2px on hover; on touch that lift sticks after a tap, so
+        # the guard must cover them the same way it covers pills.
         self.assertIn(
             "@media (hover: none) { .hp-badge:hover { transform: none; "
-            "box-shadow: none; } a.md-tag:hover { transform: none; box-shadow: none; } }",
+            "box-shadow: none; } a.hp-tag:hover { transform: none; box-shadow: none; } }",
             css)
+
+    def test_chip_and_filterbar_palette_ships(self):
+        css = (self.docs / "stylesheets" / "theme.css").read_text(encoding="utf-8")
+        # Baseline "Pill" look (POC4 style A) + light scheme + on-state for
+        # the filter toolbar; final visual pick is a CSS-only swap (S3).
+        self.assertIn(".hp-tag {", css)
+        self.assertIn('.hp-tag--type { background: #022c22; color: #a7f3d0;', css)
+        self.assertIn('[data-md-color-scheme="default"] .hp-tag', css)
+        self.assertIn(".hp-tag.on", css)
+        self.assertIn(".hp-filterbar", css)
 
     def test_hero_padding_is_fluid(self):
         css = (self.docs / "stylesheets" / "theme.css").read_text(encoding="utf-8")
@@ -325,45 +372,60 @@ class NightshellTheme(unittest.TestCase):
         self.assertIn("./jackpot --catalog all", home)
         self.assertLess(home.index("hp-hero"), home.index("## Categories"))
 
-    def test_tags_hub_page_emitted_and_in_nav(self):
+    def test_tags_hub_page_generated_and_in_nav(self):
+        # S1: the hub is generator-authored (tag -> resources), not the plugin
+        # marker anymore.
         hub = (self.docs / "tags.md").read_text(encoding="utf-8")
-        self.assertIn("<!-- material/tags -->", hub)
+        self.assertTrue(hub.startswith("# Tags"))
+        self.assertNotIn("<!-- material/tags -->", hub)
         self.assertIn('"Tags": "tags.md"', self.yml)
+        # Real catalog data drives the index (breach comes from 9Ghz/HIBP).
+        self.assertIn('<a id="t-breach"></a>', hub)
+        self.assertIn("[9Ghz](01_Recon_and_OSINT/OSINT/index.md#e-9ghz)", hub)
+        self.assertIn("[Have I Been Pwned]"
+                      "(01_Recon_and_OSINT/OSINT/index.md#e-have-i-been-pwned)", hub)
+        self.assertIn("01 · Reconnaissance and OSINT / OSINT", hub)
+
+    def test_tags_filter_js_shipped(self):
+        # S2: the live filter script is generated next to the theme assets.
+        js = (self.docs / "javascripts" / "tags-filter.js").read_text(encoding="utf-8")
+        for needle in ("hp-tag", "hp-tags", "hp-filterbar", "filter="):
+            self.assertIn(needle, js)
 
 
-class TagDedupe(unittest.TestCase):
-    # Entry pages show tags ONLY as footer bubbles.
+class TagPerResource(unittest.TestCase):
+    # S3/S4: entry pages show tags inside each entry line (chips), never as
+    # page front matter or raw residue tokens.
     @classmethod
     def setUpClass(cls):
         cls.docs = cached_build()
 
-    def test_generated_tagged_pages_have_no_residue_tag_tokens(self):
+    def test_generated_tagged_pages_have_chips_not_raw_tokens(self):
         checked = 0
         for p in self.docs.rglob("index.md"):
+            if p.parent == self.docs:
+                continue
             text = p.read_text(encoding="utf-8")
-            if not text.startswith("---\n"):
-                continue  # home/contributing keep their prose untouched
-            body = text.split("---\n", 2)[2]
-            self.assertEqual(build_site.page_tags(body), [],
-                             f"tag tokens still inline in {p}")
-            checked += 1
-        self.assertGreaterEqual(checked, 1, "expected at least one tagged page")
-        # entry bullets themselves survive (names stay searchable)
+            self.assertFalse(text.startswith("---\n"), f"front matter on {p}")
+            if "hp-tag" in text:
+                checked += 1
+        self.assertGreaterEqual(checked, 1, "expected at least one page with chips")
         leaf = self.docs / "08_Web_Application" / "Vulnerability_Specific" / "index.md"
-        self.assertIn("[HackBar]", leaf.read_text(encoding="utf-8"))
+        leaf_text = leaf.read_text(encoding="utf-8")
+        # entry bullets survive (names stay searchable) and carry their chips
+        self.assertIn("[HackBar]", leaf_text)
+        self.assertIn('<a id="e-hackbar"></a>', leaf_text)
+        self.assertIn('data-tag="burp"', leaf_text)
+        self.assertIn('href="../../tags.md#t-burp"', leaf_text)
+        self.assertNotIn("`type:tool`", leaf_text)
+        self.assertNotIn("`burp`", leaf_text)
 
-    def test_transform_unit_strip_only_removes_tokens(self):
-        src = "- [X](https://x.test) — does things. `type:tool` `linux`\n"
-        kept = build_site.transform(src, {}, None)
-        self.assertIn("`type:tool`", kept)  # old behavior intact by default
-        stripped = build_site.transform(src, {}, None, drop_tag_tokens=True)
-        self.assertEqual(stripped, "- [X](https://x.test) — does things.\n")
-
-    def test_strip_keeps_inline_code_in_description(self):
-        # Only the TRAILING tag run is removed; inline code in the prose stays.
-        src = "- [X](https://x.test) — uses `nmap` scripts. `type:tool` `linux`\n"
-        stripped = build_site.transform(src, {}, None, drop_tag_tokens=True)
-        self.assertEqual(stripped, "- [X](https://x.test) — uses `nmap` scripts.\n")
+    def test_contributing_example_stays_literal(self):
+        # S5: contributor docs keep the raw token format they teach.
+        text = (self.docs / "contributing.md").read_text(encoding="utf-8")
+        self.assertIn("- [Name](https://canonical-url) — What it does and why "
+                      "it matters. `type:tool` `linux`", text)
+        self.assertNotIn("hp-tag", text)
 
     def test_fenced_example_bullets_are_untouched(self):
         # Doc examples inside ``` fences keep their literal tag tokens.
@@ -373,10 +435,10 @@ class TagDedupe(unittest.TestCase):
             "- [Name](https://example.com) — what it does. `type:tool` `linux`\n"
             "```\n"
         )
-        out = build_site.transform(src, {}, None, drop_tag_tokens=True)
+        out = build_site.transform(src, {}, None, tagged=True, tags_href="tags.md")
         self.assertIn(
             "- [Name](https://example.com) — what it does. `type:tool` `linux`", out)
-        self.assertIn("- [X](https://x.test) — real entry.\n", out)
+        self.assertIn('- <a id="e-x"></a>[X](https://x.test) — real entry.', out)
 
 
 if __name__ == "__main__":

@@ -3,13 +3,16 @@
 The READMEs are the single source of truth: this script mirrors them into
 docs/ (git-ignored), rewrites relative links for Zensical, injects star and
 freshness badges for GitHub repositories (from meta/resources-meta.json),
-aggregates inline backtick tags into page front matter, and writes the
-site configuration. Run by .github/workflows/deploy-docs.yml.
+renders each entry's backtick tags as per-resource chips that filter the page
+and link into a generated tag->resources hub (tags.md), and writes the site
+configuration. Run by .github/workflows/deploy-docs.yml.
 """
 
 import argparse
+import html as htmlmod
 import json
 import pathlib
+import posixpath
 import re
 import shutil
 import subprocess
@@ -26,6 +29,7 @@ README_LINK_RE = re.compile(r"\]\(([^)#\s]*)README\.md\)")
 CONTRIB_LINK_RE = re.compile(r"\]\(([^)#\s]*)CONTRIBUTING\.md\)")
 LICENSE_LINK_RE = re.compile(r"\[LICENSE\]\(LICENSE\)")
 LIST_ITEM_RE = re.compile(r"^\s*[-*] \[")
+ENTRY_NAME_RE = re.compile(r"^(\s*[-*] )(?=\[)")
 TAG_TOKEN_RE = re.compile(r"`([^`\n]+)`")
 TAG_TYPE_PREFIX = "type:"
 FORMAT_COMMENT_RE = re.compile(r"^\s*<!--\s*Format:")
@@ -147,9 +151,10 @@ def strip_trailing_tags(line):
     return TRAILING_TAGS_RE.sub("", line).rstrip()
 
 
-def transform(text, meta, repo_url, drop_tag_tokens=False):
+def transform(text, meta, repo_url, tagged=False, tags_href="", sink=None):
     out_lines = []
     in_fence = False
+    used_anchors = set()
     for line in text.split("\n"):
         if line.lstrip().startswith("```"):
             in_fence = not in_fence
@@ -163,50 +168,118 @@ def transform(text, meta, repo_url, drop_tag_tokens=False):
             else:
                 line = line.replace("[LICENSE](LICENSE)", "`LICENSE`")
         if LIST_ITEM_RE.match(line) and not in_fence:
-            if drop_tag_tokens:
-                # Tags render only as footer bubbles (from front matter), so
-                # the trailing tag tokens leave the entry text. Fenced example
+            if tagged:
+                # Tags belong to their resource: the trailing token run leaves
+                # the text and comes back as chips on the same entry, with a
+                # stable anchor for the Tags hub to link into. Fenced example
                 # bullets (docs) are left completely untouched.
-                line = strip_trailing_tags(line)
+                tags = entry_tags(line)
+                if tags:
+                    line = strip_trailing_tags(line)
+                    prefix_m = ENTRY_NAME_RE.match(line)
+                    prefix = prefix_m.group(1)
+                    name_m = re.match(r"\[([^\]]+)\]", line[len(prefix):])
+                    base = "e-" + slugify(name_m.group(1) if name_m else "entry")
+                    anchor, n = base, 2
+                    while anchor in used_anchors:
+                        anchor = f"{base}-{n}"
+                        n += 1
+                    used_anchors.add(anchor)
+                    line = (prefix + f'<a id="{anchor}"></a>' + line[len(prefix):])
+                    if sink is not None:
+                        sink.append((name_m.group(1) if name_m else "entry",
+                                     anchor, tags))
+                    line = line.rstrip() + badge_suffix(line, meta)
+                    line = line + " " + tag_chips(tags, tags_href)
+                    out_lines.append(line)
+                    continue
             line = line.rstrip() + badge_suffix(line, meta)
         out_lines.append(line)
     return "\n".join(out_lines)
 
 
-def page_tags(text):
-    """Unique tags from inline backtick tokens on list-item lines.
-
-    `type:tool`-style tokens contribute their value (tool); plain tokens
-    (osint, linux, ...) are kept raw. Feeds Zensical's native tags plugin so
-    entries' tags are searchable and filterable at page level."""
-    tags = []
-    for line in text.split("\n"):
-        if not LIST_ITEM_RE.match(line):
-            continue
-        for token in TAG_TOKEN_RE.findall(line):
-            token = token.strip()
-            if token.startswith(TAG_TYPE_PREFIX):
-                token = token[len(TAG_TYPE_PREFIX):].strip()
-            if token and token not in tags:
-                tags.append(token)
-    return tags
+def slugify(value):
+    """Anchor-safe slug: casefolded, runs of anything outside [a-z0-9_+-]
+    become single hyphens, edge hyphens trimmed. Never empty."""
+    slug = re.sub(r"[^a-z0-9_+-]+", "-", value.casefold()).strip("-")
+    return slug or "entry"
 
 
-def front_matter(tags):
-    if not tags:
-        return ""
-    lines = ["---", "tags:"]
-    lines += [f"- {yaml_quote(tag)}" for tag in tags]
-    lines.append("---")
-    return "\n".join(lines) + "\n"
+def entry_tags(line):
+    """(tag, is_type) pairs from the TRAILING backtick run of one entry line.
+
+    `type:tool`-style tokens contribute their value (tool) flagged as type;
+    plain tokens (osint, linux, ...) are kept raw. Unlike the removed page
+    aggregation, inline code inside the description is never a tag — only
+    the trailing run counts (CONTRIBUTING: tags are always last)."""
+    if not LIST_ITEM_RE.match(line):
+        return []
+    run = TRAILING_TAGS_RE.search(line)
+    if not run:
+        return []
+    pairs = []
+    for token in TAG_TOKEN_RE.findall(run.group(0)):
+        token = token.strip()
+        is_type = token.startswith(TAG_TYPE_PREFIX)
+        if is_type:
+            token = token[len(TAG_TYPE_PREFIX):].strip()
+        if token and (token, is_type) not in pairs:
+            pairs.append((token, is_type))
+    return pairs
 
 
-def convert(source, dest, meta, repo_url, tagged=False):
+def tag_chips(tags, tags_href):
+    """Inline HTML: one clickable chip per tag, linking to the tag's section
+    in the generated Tags hub."""
+    chips = []
+    for tag, is_type in tags:
+        cls = "hp-tag hp-tag--type" if is_type else "hp-tag"
+        escaped = htmlmod.escape(tag, quote=True)
+        href = f"{tags_href}#t-{slugify(tag)}"
+        chips.append(f'<a class="{cls}" data-tag="{escaped}" href="{href}">{escaped}</a>')
+    return '<span class="hp-tags">' + "".join(chips) + "</span>"
+
+
+def render_tags(index):
+    """Tags hub page: every tag groups the resources it labels (tag->entries),
+    each linking straight to its anchored entry on the category page."""
+    lines = ["# Tags", "",
+             "Every tag used across the catalog, grouped by the resources it",
+             "labels. Each line links straight to that resource on its page;",
+             "on a resource page, clicking a chip filters the list in place.",
+             ""]
+    used_ids = set()
+    for tag in sorted(index, key=lambda t: t.casefold()):
+        anchor = "t-" + slugify(tag)
+        base, n = anchor, 2
+        while anchor in used_ids:
+            anchor = f"{base}-{n}"
+            n += 1
+        used_ids.add(anchor)
+        lines.append(f'<a id="{anchor}"></a>')
+        lines.append(f"## {tag}")
+        lines.append("")
+        for name, doc, entry_anchor, crumb in sorted(
+                index[tag], key=lambda i: (i[0].casefold(), i[1], i[2])):
+            lines.append(f"- [{name}]({doc}#{entry_anchor}) — {crumb}")
+        lines.append("")
+    return "\n".join(lines)
+
+
+def convert(source, dest, meta, repo_url, tagged=False, sink=None, crumb=""):
     text = source.read_text(encoding="utf-8")
     dest.parent.mkdir(parents=True, exist_ok=True)
-    tags = page_tags(transform(text, meta, repo_url)) if tagged else []
-    body = transform(text, meta, repo_url, drop_tag_tokens=tagged)
-    dest.write_text(front_matter(tags) + body, encoding="utf-8")
+    rel_dir = dest.parent.relative_to(DOCS).as_posix()
+    tags_href = posixpath.relpath("tags.md", rel_dir if rel_dir != "." else ".")
+    page_hits = []
+    body = transform(text, meta, repo_url, tagged=tagged,
+                     tags_href=tags_href, sink=page_hits)
+    dest.write_text(body, encoding="utf-8")
+    if sink is not None:
+        doc = dest.relative_to(DOCS).as_posix()
+        for name, entry_anchor, tags in page_hits:
+            for tag, _is_type in tags:
+                sink.setdefault(tag, []).append((name, doc, entry_anchor, crumb))
     return dest.relative_to(DOCS).as_posix()
 
 
@@ -240,11 +313,21 @@ THEME_CSS = THEME_FACES + """.md-typeset h1, .md-typeset h2, .md-typeset h3 { fo
 .hp-hero p { color: #a7f3d0; }
 .hp-chips { margin-top: 1rem; display: flex; gap: .5rem; flex-wrap: wrap; }
 .hp-chips span { font-family: "JetBrains Mono", monospace; font-size: .72rem; padding: .25rem .7rem; border-radius: 999px; background: #064e3b; color: #6ee7b7; border: 1px solid #10b98144; }
-.md-tag { background: #022c22 !important; color: #6ee7b7 !important; border: 1px solid #10b98155; border-radius: 999px; font-family: "JetBrains Mono", monospace; }
-[data-md-color-scheme="default"] .md-tag { background: #d1fae5 !important; color: #065f46 !important; border-color: #10b98155; }
-a.md-tag { transition: transform .15s ease, box-shadow .15s ease, filter .15s ease; }
-a.md-tag:hover { transform: translateY(-2px); box-shadow: 0 4px 14px #10b9813d !important; filter: brightness(1.12); }
-a.md-tag:active { transform: translateY(0); box-shadow: 0 1px 4px #10b98133 !important; }
+a.hp-tag { display: inline-block; font-family: "JetBrains Mono", monospace; font-size: .62rem; line-height: 1.5; padding: .06rem .5rem; margin: 0 .1rem; border-radius: 999px; background: #064e3b; color: #6ee7b7; border: 1px solid #10b98144; white-space: nowrap; transition: transform .15s ease, box-shadow .15s ease, filter .15s ease; }
+a.hp-tag--type { background: #022c22; color: #a7f3d0; }
+a.hp-tag--type::before { content: "\\25C6 "; font-size: .55rem; }
+[data-md-color-scheme="default"] .hp-tag { background: #d1fae5; color: #065f46; border-color: #10b98155; }
+a.hp-tag.on { background: #10b981; color: #022c22; font-weight: 700; border-color: #10b981; }
+.hp-tags { display: inline; }
+a.hp-tag:hover { transform: translateY(-2px); box-shadow: 0 4px 14px #10b9813d; filter: brightness(1.12); }
+a.hp-tag:active { transform: translateY(0); box-shadow: 0 1px 4px #10b98133; }
+.hp-filterbar { position: sticky; top: 2.6rem; z-index: 4; background: var(--md-default-bg-color); border: 1px solid var(--md-default-fg-color--lightest); border-radius: 10px; padding: .55rem .8rem; margin: .6rem 0 1rem; }
+.hp-filter-lbl { font-family: "JetBrains Mono", monospace; font-size: .7rem; color: var(--md-default-fg-color--light); text-transform: uppercase; margin-right: .5rem; }
+.hp-filter-row { margin-top: .4rem; }
+.hp-filter-count { font-family: "JetBrains Mono", monospace; font-size: .72rem; color: #fbbf24; }
+.hp-filter-clear { font-family: "JetBrains Mono", monospace; font-size: .72rem; color: inherit; background: none; border: 1px solid #ef444455; border-radius: 999px; padding: .12rem .6rem; cursor: pointer; margin-left: .6rem; }
+.hp-filter-index { font-family: "JetBrains Mono", monospace; font-size: .72rem; margin-left: .6rem; }
+.md-content li.hp-hidden { display: none; }
 .md-content table { border-radius: 10px; overflow: auto; }
 .md-content tbody tr:hover { background: #0596690f; }
 .hp-badge { display: inline-block; font-family: "JetBrains Mono", monospace; font-size: .64rem; padding: .1rem .45rem; line-height: 1.4; border-radius: 999px; border: 1px solid transparent; white-space: nowrap; transition: transform .15s ease, box-shadow .15s ease; }
@@ -261,8 +344,8 @@ a.md-tag:active { transform: translateY(0); box-shadow: 0 1px 4px #10b98133 !imp
 [data-md-color-scheme="default"] .hp-badge--commit-dormant { background: #fee2e2; color: #991b1b; border-color: #ef444455; }
 .hp-badge--broken { background: #7f1d1d33; color: #fca5a5; border-color: #f8717155; }
 [data-md-color-scheme="default"] .hp-badge--broken { background: #fee2e2; color: #991b1b; border-color: #ef444455; }
-@media (max-width: 30em) { .hp-badge { font-size: .58rem; padding: .08rem .4rem; } }
-@media (hover: none) { .hp-badge:hover { transform: none; box-shadow: none; } a.md-tag:hover { transform: none; box-shadow: none; } }
+@media (max-width: 30em) { .hp-badge { font-size: .58rem; padding: .08rem .4rem; } a.hp-tag { font-size: .58rem; padding: .05rem .4rem; } }
+@media (hover: none) { .hp-badge:hover { transform: none; box-shadow: none; } a.hp-tag:hover { transform: none; box-shadow: none; } }
 """
 
 HOME_HERO = """<div class="hp-hero">
@@ -274,15 +357,115 @@ HOME_HERO = """<div class="hp-hero">
 
 """
 
-# The native tags plugin (adapted from Material's tags plugin) renders a
-# whole-site tag index at this marker, and turns each page's tags into links
-# that jump to their entry in it. Material's marker, not mkdocs-plugin-tags'.
-TAGS_PAGE = """# Tags
+# Live per-resource filtering over the tag chips (S2). Progressive
+# enhancement: without JS the chips stay plain links into the Tags hub.
+TAGS_FILTER_JS = """/* Hackpot per-resource tags: click a chip to add/remove its tag in this
+   page's live filter (AND semantics). Ctrl/Cmd/middle-click still follows the
+   chip link into the whole-site Tags hub. Selection deep-links via
+   #filter=tag+tag; without JS chips stay plain links and nothing is hidden. */
+(function () {
+  "use strict";
+  var content = document.querySelector(".md-content .md-typeset")
+    || document.querySelector(".md-content");
+  if (!content) return;
+  var groups = [];
+  content.querySelectorAll("ul, ol").forEach(function (ul) {
+    var items = [].filter.call(ul.children, function (el) {
+      return el.tagName === "LI" && el.querySelector(".hp-tags a.hp-tag");
+    });
+    if (items.length) groups.push({ ul: ul, items: items });
+  });
+  if (!groups.length) return;
 
-Every tag used across the catalog. Pick one to filter the site —
-or filter search results by tag from the search bar.
+  var counts = {}, allItems = [];
+  groups.forEach(function (g) {
+    g.items.forEach(function (li) {
+      allItems.push(li);
+      li.querySelectorAll(".hp-tags a.hp-tag").forEach(function (a) {
+        var t = a.getAttribute("data-tag");
+        counts[t] = (counts[t] || 0) + 1;
+      });
+    });
+  });
+  var tags = Object.keys(counts).sort(function (a, b) {
+    return counts[b] - counts[a] || a.localeCompare(b);
+  });
+  var TYPE = ["tool", "docs", "lab", "article", "video", "course", "wordlist"];
+  var sel = [];
 
-<!-- material/tags -->
+  var bar = document.createElement("div");
+  bar.className = "hp-filterbar";
+  bar.innerHTML =
+    '<span class="hp-filter-lbl">Filter</span><span class="hp-filter-chips"></span>'
+    + '<div class="hp-filter-row"><span class="hp-filter-count"></span>'
+    + '<button class="hp-filter-clear" type="button">clear \u2715</button>'
+    + '<a class="hp-filter-index" href="#">Tags index \u2192</a></div>';
+  groups[0].ul.parentNode.insertBefore(bar, groups[0].ul);
+
+  var firstChip = allItems[0].querySelector(".hp-tags a.hp-tag");
+  bar.querySelector(".hp-filter-index").href =
+    firstChip.getAttribute("href").split("#")[0];
+
+  function renderBar() {
+    var wrap = bar.querySelector(".hp-filter-chips");
+    wrap.innerHTML = "";
+    tags.forEach(function (t) {
+      var a = document.createElement("a");
+      a.className = "hp-tag" + (TYPE.indexOf(t) >= 0 ? " hp-tag--type" : "")
+        + (sel.indexOf(t) >= 0 ? " on" : "");
+      a.href = "#";
+      a.setAttribute("data-tag", t);
+      a.textContent = t + " " + counts[t];
+      wrap.appendChild(a);
+    });
+  }
+  function updateUrl() {
+    var base = location.href.split("#")[0];
+    history.replaceState(null, "",
+      base + (sel.length ? "#filter=" + sel.map(encodeURIComponent).join("+") : ""));
+  }
+  function apply() {
+    renderBar();
+    var shown = 0;
+    allItems.forEach(function (li) {
+      var chips = [].slice.call(li.querySelectorAll(".hp-tags a.hp-tag"));
+      var liTags = chips.map(function (a) { return a.getAttribute("data-tag"); });
+      var ok = sel.every(function (t) { return liTags.indexOf(t) >= 0; });
+      li.classList.toggle("hp-hidden", !ok);
+      if (ok) shown++;
+      chips.forEach(function (a) {
+        a.classList.toggle("on", sel.indexOf(a.getAttribute("data-tag")) >= 0);
+      });
+    });
+    bar.querySelector(".hp-filter-count").textContent =
+      shown + " / " + allItems.length + " resources";
+    updateUrl();
+  }
+  function toggle(t) {
+    var i = sel.indexOf(t);
+    if (i >= 0) { sel.splice(i, 1); } else { sel.push(t); }
+    apply();
+  }
+  content.addEventListener("click", function (e) {
+    var chip = e.target.closest ? e.target.closest("a.hp-tag") : null;
+    if (!chip) return;
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
+    toggle(chip.getAttribute("data-tag"));
+  });
+  bar.querySelector(".hp-filter-clear").addEventListener("click", function () {
+    sel = [];
+    apply();
+  });
+  var m = location.hash.match(/^#filter=(.*)$/);
+  if (m) {
+    m[1].split("+").forEach(function (t) {
+      t = decodeURIComponent(t);
+      if (counts[t] && sel.indexOf(t) < 0) sel.push(t);
+    });
+  }
+  apply();
+})();
 """
 
 
@@ -310,25 +493,29 @@ def build(out_dir, repo_url):
     if (ROOT / "CONTRIBUTING.md").exists():
         convert(ROOT / "CONTRIBUTING.md", DOCS / "contributing.md", meta, repo_url)
         nav.append(("Contributing", "contributing.md"))
-    (DOCS / "tags.md").write_text(TAGS_PAGE, encoding="utf-8")
     nav.append(("Tags", "tags.md"))
 
+    tag_index = {}
     category_pages = []
     for category_dir in sorted(
         p for p in ROOT.iterdir() if p.is_dir() and CATEGORY_DIR_RE.match(p.name)
     ):
         cat_title = page_title(category_dir / "README.md")
+        cat_crumb = f"{category_dir.name[:2]} · {cat_title}"
         cat_nav = []
         cat_file = f"{category_dir.name}/index.md"
-        convert(category_dir / "README.md", DOCS / cat_file, meta, repo_url, tagged=True)
+        convert(category_dir / "README.md", DOCS / cat_file, meta, repo_url,
+                tagged=True, sink=tag_index, crumb=cat_crumb)
         cat_nav.append(("Overview", cat_file))
         for leaf_dir in sorted(p for p in category_dir.iterdir() if p.is_dir()):
             leaf_title = page_title(leaf_dir / "README.md")
             leaf_file = f"{category_dir.name}/{leaf_dir.name}/index.md"
-            convert(leaf_dir / "README.md", DOCS / leaf_file, meta, repo_url, tagged=True)
+            convert(leaf_dir / "README.md", DOCS / leaf_file, meta, repo_url,
+                    tagged=True, sink=tag_index, crumb=f"{cat_crumb} / {leaf_title}")
             cat_nav.append((leaf_title, leaf_file))
-        category_pages.append((f"{category_dir.name[:2]} · {cat_title}", cat_nav))
+        category_pages.append((cat_crumb, cat_nav))
     nav.extend(category_pages)
+    (DOCS / "tags.md").write_text(render_tags(tag_index), encoding="utf-8")
 
     checked = meta.get("checked_at")
     if checked:
@@ -348,6 +535,9 @@ def build(out_dir, repo_url):
     styles = DOCS / "stylesheets"
     styles.mkdir(parents=True, exist_ok=True)
     (styles / "theme.css").write_text(THEME_CSS, encoding="utf-8")
+    scripts_dir = DOCS / "javascripts"
+    scripts_dir.mkdir(parents=True, exist_ok=True)
+    (scripts_dir / "tags-filter.js").write_text(TAGS_FILTER_JS, encoding="utf-8")
     # Self-hosted fonts and OFL license texts ship with the site.
     repo_fonts = ROOT / "assets" / "fonts"
     if repo_fonts.is_dir():
@@ -395,9 +585,10 @@ def build(out_dir, repo_url):
         "        name: \"Switch to system preference\"",
         "extra_css:",
         "  - \"stylesheets/theme.css\"",
+        "extra_javascript:",
+        "  - \"javascripts/tags-filter.js\"",
         "plugins:",
         "  - search",
-        "  - tags",
         "markdown_extensions:",
         "  - toc:",
         "      permalink: true",
