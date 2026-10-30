@@ -5,3 +5,4 @@ API-specific assessment: REST and GraphQL discovery and fuzzing, broken-object a
 ## Resources
 
 <!-- Format: - [Name](https://url) — what it does and why it matters. Tags: `type:tool|course|docs|wordlist|lab|article|video` `platform or tech` -->
+- [DotGit](https://github.com/davtur19/DotGit) — An extension for checking if .git is exposed in visited websites. `type:tool` `.git` `repository` `extension`
