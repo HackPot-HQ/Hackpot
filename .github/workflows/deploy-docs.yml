@@ -35,6 +35,87 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Clear stale Pages deployments that block deploy-pages with
+  # "due to in progress deployment. Please cancel <sha> first".
+  #
+  # How this happens: deploy-pages creates a Pages deployment and only marks it
+  # success at the end of the job. Any run that dies between those two points —
+  # infra failure (e.g. run #42) or a cancelled deploy job — leaves the
+  # deployment stuck, and Pages allows only one active deployment, so every
+  # later deploy fails with 400. The workflow_run trigger above makes it worse:
+  # a completed/cancelled link check still fires it.
+  #
+  # Contract (verified live against this repo + the OpenAPI spec):
+  # - There is NO "GET /pages/deployments" list endpoint. Pages deployments
+  #   surface as classic Deployment records in the "github-pages" environment:
+  #   GET /deployments?environment=github-pages, items {id, sha}.
+  # - Current state = GET /deployments/{id}/statuses, newest-first: the real
+  #   lifecycle here is waiting -> queued -> in_progress -> success|failure.
+  # - Cancel is POST /pages/deployments/{pages_deployment_id}/cancel, and that
+  #   id IS the deployment's Git SHA (Pages build version), not the classic
+  #   numeric deployment id.
+  #
+  # Safety: workflow-level "concurrency: pages" serializes deploy runs, so when
+  # this step executes, no other run of this workflow can be mid-deploy — any
+  # non-terminal latest state belongs to an already-finished run. Cancelling
+  # it is exactly what the 400 error advises ("cancel first"). No other
+  # workflow deploys Pages here (site-check.yml is the PR-time twin without
+  # Pages permissions). Every failure degrades to a warning + exit 0: a
+  # best-effort reaper must never be worse than today's status quo, where
+  # deploy-pages itself reports the blocking state in its own error.
+  clear-stale-deployment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Reap stale Pages deployments
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          API: repos/${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # github.repository is "owner/name" — exactly the REST path segment.
+          # tr -d '\r' guards line-ending noise (harmless no-op on Linux).
+          # --paginate covers repos with >100 accumulated deployments.
+          if ! deps="$(gh api --paginate "${API}/deployments?environment=github-pages&per_page=100" \
+                        --jq '.[] | [.id, .sha] | @tsv' 2>&1 | tr -d '\r')"; then
+            echo "::warning::Could not list Pages deployments; deploying anyway and letting deploy-pages decide. gh said: $deps"
+            exit 0
+          fi
+          if [ -z "$deps" ]; then
+            echo "No github-pages deployments exist yet; nothing to clear."
+            exit 0
+          fi
+          # Here-string (not a pipe) keeps the loop in this shell so
+          # $handled_shas survives between iterations.
+          handled_shas=""
+          while IFS=$'\t' read -r dep_id sha; do
+            [ -n "$dep_id" ] || continue
+            case " $handled_shas " in
+              *" $sha "*) continue ;;  # re-runs share one sha; act on it once
+            esac
+            if ! state="$(gh api "${API}/deployments/${dep_id}/statuses" \
+                           --jq '[.[].state] | first // "none"' 2>&1 | tr -d '\r')"; then
+              echo "::warning::Could not read statuses of deployment $dep_id ($sha); skipping. gh said: $state"
+              continue
+            fi
+            echo "Deployment $dep_id ($sha): $state"
+            case "$state" in
+              waiting|queued|in_progress)
+                # Documented Pages cancel route; keyed by the deployment SHA.
+                if gh api -X POST "${API}/pages/deployments/${sha}/cancel" >/dev/null 2>&1; then
+                  echo "Cancelled stale Pages deployment $sha ($state)."
+                else
+                  echo "::warning::Could not cancel $sha ($state); deploy-pages may still 400."
+                fi
+                handled_shas="$handled_shas $sha" ;;
+              success|failure|error|inactive|active|pending|none)
+                ;; # terminal or non-blocking: leave untouched
+              *)
+                echo "::warning::Unrecognized state '$state' for $sha; leaving alone."
+                handled_shas="$handled_shas $sha" ;;
+            esac
+          done <<< "$deps"
+
   build:
     runs-on: ubuntu-latest
     steps:
@@ -63,7 +144,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    needs: build
+    needs: [build, clear-stale-deployment]
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
