@@ -451,6 +451,45 @@ class CollapsibleSidebar(unittest.TestCase):
         self.assertLess(css.index("@media screen and (min-width: 1220px)"),
                         css.index("html.hp-nav-collapsed .md-sidebar--primary"))
 
+    def test_toggle_icons_are_distinct_per_state(self):
+        # User (2026-11-04): no square; the glyph must read differently in
+        # each state. Chevrons: << collapses the panel, >> expands it.
+        js = (self.docs / "javascripts" / "sidebar-toggle.js").read_text(encoding="utf-8")
+        self.assertIn("m11 17-5-5 5-5", js)   # chevrons-left  (visible)
+        self.assertIn("m18 17-5-5 5-5", js)
+        self.assertIn("m6 17 5-5-5-5", js)    # chevrons-right (collapsed)
+        self.assertIn("m13 17 5-5-5-5", js)
+        # The boxed panel frame is gone for good.
+        self.assertNotIn("<rect", js)
+
+
+class NavSections(unittest.TestCase):
+    # Category groups (01..17) are collapsed until opened or visited, and
+    # any number of them stays open across page loads (localStorage).
+    @classmethod
+    def setUpClass(cls):
+        cls.docs = cached_build()
+        cls.yml = (cls.docs.parent / "mkdocs.yml").read_text(encoding="utf-8")
+
+    def test_sections_script_ships_in_config(self):
+        self.assertIn('"javascripts/nav-sections.js"', self.yml)
+
+    def test_sections_js_persists_multi_open_state(self):
+        js = (self.docs / "javascripts" / "nav-sections.js").read_text(encoding="utf-8")
+        for needle in ("hackpot.nav.sections.open", "md-nav__item--section",
+                       "md-nav__toggle", "md-nav__item--active",
+                       "localStorage", 'addEventListener("change"'):
+            self.assertIn(needle, js)
+        # Scoped to nav section checkboxes: the TOC toggle (#__toc) and the
+        # drawer toggle (#__drawer) must never be touched.
+        self.assertIn('indexOf("__nav_")', js)
+
+    def test_sections_state_is_a_list_not_a_single_open(self):
+        # Multiple categories open at once = array semantics, not a radio.
+        js = (self.docs / "javascripts" / "nav-sections.js").read_text(encoding="utf-8")
+        self.assertIn("JSON.parse", js)
+        self.assertIn("JSON.stringify", js)
+
 
 class TagPerResource(unittest.TestCase):
     # S3/S4: entry pages show tags inside each entry line (chips), never as
