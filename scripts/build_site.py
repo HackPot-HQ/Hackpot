@@ -349,9 +349,12 @@ a.hp-tag:active { transform: translateY(0); box-shadow: 0 1px 4px #10b98133; }
 @media (max-width: 30em) { .hp-badge { font-size: .58rem; padding: .08rem .4rem; } a.hp-tag { font-size: .58rem; padding: .05rem .4rem; } }
 @media (hover: none) { .hp-badge:hover { transform: none; box-shadow: none; } a.hp-tag:hover { transform: none; box-shadow: none; } }
 /* Collapsible primary sidebar: hidden below the 1220px drawer breakpoint,
-   where the off-canvas drawer and its hamburger are already native. */
-.hp-nav-toggle { display: none; }
-@media screen and (min-width: 1220px) { .hp-nav-toggle { display: inline-flex; } html.hp-nav-collapsed .md-sidebar--primary { display: none; } }
+   where the off-canvas drawer and its hamburger are already native.
+   Zensical ships ".md-header__button:not([hidden]){display:inline-block}"
+   at specificity (0,2,0); a bare .hp-nav-toggle rule loses the cascade and
+   leaks the button into the mobile header, so out-specify it. */
+.md-header .md-header__button.hp-nav-toggle { display: none; }
+@media screen and (min-width: 1220px) { .md-header .md-header__button.hp-nav-toggle { display: inline-flex; } html.hp-nav-collapsed .md-sidebar--primary { display: none; } }
 """
 
 HOME_HERO = """<div class="hp-hero">

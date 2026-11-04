@@ -438,13 +438,19 @@ class CollapsibleSidebar(unittest.TestCase):
         css = (self.docs / "stylesheets" / "theme.css").read_text(encoding="utf-8")
         # Hidden below the drawer breakpoint: the off-canvas drawer and its
         # hamburger are native there, a second toggle would be noise.
-        self.assertIn(".hp-nav-toggle { display: none; }", css)
-        # At >=1220px the button appears and the collapsed class hides the
-        # pinned sidebar; flex .md-content then reclaims its 12.1rem.
+        # Zensical ships ".md-header__button:not([hidden]){display:inline-block}"
+        # at specificity (0,2,0), so a bare ".hp-nav-toggle{display:none}"
+        # loses the cascade and leaks the button onto mobile (user report
+        # 2026-11-04). The hide rule must out-specify it.
         self.assertIn(
-            "@media screen and (min-width: 1220px) { .hp-nav-toggle "
-            "{ display: inline-flex; } html.hp-nav-collapsed .md-sidebar--primary "
-            "{ display: none; } }",
+            ".md-header .md-header__button.hp-nav-toggle { display: none; }", css)
+        # At >=1220px the button appears (same specificity, later in file)
+        # and the collapsed class hides the pinned sidebar; flex
+        # .md-content then reclaims its 12.1rem.
+        self.assertIn(
+            "@media screen and (min-width: 1220px) { .md-header "
+            ".md-header__button.hp-nav-toggle { display: inline-flex; } "
+            "html.hp-nav-collapsed .md-sidebar--primary { display: none; } }",
             css)
         # The collapse rule must live inside the desktop media query: a
         # bare rule would also kill the drawer below 1220px.
