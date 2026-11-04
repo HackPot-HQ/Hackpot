@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hackpot PoC — tags on a new line (resource pages)</title>
+<style>
+/* ------------------------------------------------------------------ */
+/* PoC shell (gallery chrome only — not part of the theme)             */
+/* ------------------------------------------------------------------ */
+body { margin: 0; padding: 2rem 1.2rem 4rem; background: #0b1220; color: #cbd5e1;
+       font-family: "Inter", system-ui, sans-serif; font-size: 15px; line-height: 1.55; }
+main { max-width: 1180px; margin: 0 auto; }
+h1 { font-family: "JetBrains Mono", monospace; font-size: 1.35rem; color: #ecfdf5; margin: 0 0 .3rem; }
+h2 { font-family: "JetBrains Mono", monospace; font-size: 1.05rem; color: #34d399; margin: 2.4rem 0 .2rem; }
+.sub { color: #64748b; margin: 0 0 1.6rem; font-size: .85rem; }
+.tag-badge { display:inline-block; font-family:"JetBrains Mono",monospace; font-size:.62rem; padding:.1rem .5rem; border:1px solid #334155; border-radius:999px; color:#94a3b8; margin-right:.4rem; }
+.pair { display: flex; gap: 1rem; flex-wrap: wrap; align-items: stretch; }
+.pair > section { flex: 1 1 460px; min-width: 320px; }
+.notes { border: 1px solid #1e293b; border-left: 3px solid #10b981; background: #0f172a;
+         border-radius: 8px; padding: .7rem .95rem; margin: .6rem 0 1rem; font-size: .8rem; color: #94a3b8; }
+.notes b { color: #e2e8f0; }
+.notes code { font-family: "JetBrains Mono", monospace; font-size: .74rem; color: #6ee7b7; background: #022c2266; padding: .05rem .3rem; border-radius: 4px; }
+.notes ul { margin: .35rem 0 0; padding-left: 1.1rem; }
+
+/* ------------------------------------------------------------------ */
+/* Theme emulation: values copied verbatim from scripts/build_site.py  */
+/* THEME_CSS so chips/badges look exactly like the built site.         */
+/* ------------------------------------------------------------------ */
+.panel { border-radius: 12px; border: 1px solid #1e293b; padding: 1rem 1.2rem; }
+.panel figcaption { font-family: "JetBrains Mono", monospace; font-size: .66rem; letter-spacing: .08em;
+                    text-transform: uppercase; margin: 0 0 .6rem; opacity: .55; }
+.panel[data-scheme="dark"] { background: #0a0f14; color: rgba(255,255,255,.87); }
+.panel[data-scheme="default"] { background: #ffffff; color: rgba(0,0,0,.87); border-color: #e2e8f0; }
+.panel[data-scheme="dark"] { --link: #34d399; --hair: #10b9813d; --muted: rgba(255,255,255,.45); }
+.panel[data-scheme="default"] { --link: #047857; --hair: #10b98155; --muted: rgba(0,0,0,.42); }
+.panel ul.md-typeset { font-size: .8rem; line-height: 1.6; margin: 0; padding-left: 1.2rem; }
+.panel li.md-typeset { margin: .5rem 0; }
+.panel li.md-typeset > a { color: var(--link); text-decoration: none; }
+.panel li.md-typeset > a:hover { text-decoration: underline; }
+
+/* chips + badges — verbatim THEME_CSS values */
+.hp-tags { display: inline; }                     /* current rule, build_site.py:323 */
+.panel a.hp-tag { display: inline-block; font-family: "JetBrains Mono", monospace; font-size: .62rem;
+  line-height: 1.5; padding: .06rem .5rem; margin: 0 .1rem; border-radius: 999px; background: transparent;
+  color: #6ee7b7; border: 1px solid #10b98155; white-space: nowrap;
+  transition: transform .15s ease, box-shadow .15s ease, filter .15s ease; }
+.panel a.hp-tag--type { background: #10b981; color: #022c22; font-weight: 700; border-color: #10b981; }
+.panel a.hp-tag--type::before { content: "\25C6 "; font-size: .55rem; }
+.panel[data-scheme="default"] a.hp-tag { color: #065f46; border-color: #10b98199; }
+.panel a.hp-tag:hover { transform: translateY(-2px); box-shadow: 0 4px 14px #10b9813d; filter: brightness(1.12); }
+.panel .hp-badge { display: inline-block; font-family: "JetBrains Mono", monospace; font-size: .64rem;
+  padding: .1rem .45rem; line-height: 1.4; border-radius: 999px; border: 1px solid transparent; white-space: nowrap; }
+.panel .hp-badge--stars { background: #78350f; color: #fde68a; border-color: #fbbf2466; }
+.panel .hp-badge--commit-fresh { background: #022c22; color: #6ee7b7; border-color: #10b98155; }
+.panel .hp-badge--commit-dormant { background: #450a0a; color: #fca5a5; border-color: #ef444455; }
+.panel[data-scheme="default"] .hp-badge--stars { background: #f59e0b; color: #292002; }
+.panel[data-scheme="default"] .hp-badge--commit-fresh { background: #d1fae5; color: #065f46; }
+.panel[data-scheme="default"] .hp-badge--commit-dormant { background: #fee2e2; color: #991b1b; }
+
+/* ------------------------------------------------------------------ */
+/* Variant layouts                                                     */
+/* ------------------------------------------------------------------ */
+/* V0 baseline: current site — tags trail the text inline. Nothing here. */
+
+/* V1 — bare block drop */
+.v1 .hp-tags { display: block; margin-top: .3rem; }
+
+/* V2 — hairline separator */
+.v2 .hp-tags { display: block; margin-top: .4rem; padding-top: .35rem;
+               border-top: 1px dashed var(--hair); }
+
+/* V3 — labelled tag row */
+.v3 .hp-tags { display: block; margin-top: .35rem; }
+.v3 .hp-tags::before { content: "tags:"; font-family: "JetBrains Mono", monospace; font-size: .62rem;
+                       color: var(--muted); letter-spacing: .06em; margin-right: .35rem; }
+
+/* V4 — meta row: badges AND tags move to line 2 */
+.v4 .hp-meta { display: block; margin-top: .45rem; }
+.v4 .hp-meta .hp-sep { color: var(--muted); font-size: .64rem; margin: 0 .35rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Tags on a new line — resource pages</h1>
+  <p class="sub">PoC gallery · open this file directly, no build · sample entries are <b>real</b> data
+  (HackTricks, HackBar, mithril, Damn-Vulnerable-Drone) with the exact chip/badge CSS from
+  <code>THEME_CSS</code> in scripts/build_site.py · each variant shows dark + light side by side.</p>
+
+  <p class="sub">
+    <span class="tag-badge">V1–V3: one CSS rule change</span>
+    <span class="tag-badge">V4: markup reorder in transform()</span>
+    <span class="tag-badge">filter JS: safe in all variants (DOM structure untouched)</span>
+  </p>
+
+  <!-- ================= V0 ================= -->
+  <h2>V0 · current site (baseline)</h2>
+  <div class="notes">Today: <code>.hp-tags { display: inline; }</code> (build_site.py:323) — chips trail the
+  description and badges, so a busy entry reads as one long wrap-around line.</div>
+  <div class="pair">
+    <section class="panel v0" data-scheme="dark"><figcaption>dark / slate</figcaption>
+      <ul class="md-typeset">
+        <li class="md-typeset"><a id="e-hacktricks"></a><a href="#">HackTricks</a> — A free, community-maintained cybersecurity knowledge base focused on offensive security. <span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="docs" href="#">docs</a></span></li>
+        <li class="md-typeset"><a id="e-hackbar"></a><a href="#">HackBar</a> — HackBar plugin for Burpsuite. <span class="hp-badge hp-badge--stars">★ 1.6k</span> <span class="hp-badge hp-badge--commit hp-badge--commit-dormant">last commit 5y 199d</span> <span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="tool" href="#">tool</a><a class="hp-tag" data-tag="burp" href="#">burp</a><a class="hp-tag" data-tag="plugin" href="#">plugin</a><a class="hp-tag" data-tag="extension" href="#">extension</a></span></li>
+        <li class="md-typeset"><a id="e-mithril"></a><a href="#">mithril</a> — IoT static scanner for secrets, SBOM, CVEs and more. <span class="hp-badge hp-badge--stars">★ 382</span> <span class="hp-badge hp-badge--commit hp-badge--commit-fresh">last commit 1d</span> <span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="tool" href="#">tool</a><a class="hp-tag" data-tag="secrets" href="#">secrets</a><a class="hp-tag" data-tag="scanner" href="#">scanner</a><a class="hp-tag" data-tag="cve" href="#">cve</a><a class="hp-tag" data-tag="firmware" href="#">firmware</a><a class="hp-tag" data-tag="iot" href="#">iot</a></span></li>
+        <li class="md-typeset"><a id="e-damn-vulnerable-drone"></a><a href="#">Damn-Vulnerable-Drone</a> — Damn Vulnerable Drone is an intentionally vulnerable drone hacking simulator based on the popular ArduPilot/MAVLink architecture, providing a realistic environment for hands-on drone hacking. <span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="lab" href="#">lab</a><a class="hp-tag" data-tag="drone" href="#">drone</a><a class="hp-tag" data-tag="mavlink" href="#">mavlink</a><a class="hp-tag" data-tag="ardupilot" href="#">ardupilot</a></span></li>
+      </ul>
+    </section>
+    <section class="panel v0" data-scheme="default"><figcaption>light / default</figcaption>
+      <ul class="md-typeset">
+        <li class="md-typeset"><a href="#">HackTricks</a> — A free, community-maintained cybersecurity knowledge base focused on offensive security. <span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="docs" href="#">docs</a></span></li>
+        <li class="md-typeset"><a href="#">HackBar</a> — HackBar plugin for Burpsuite. <span class="hp-badge hp-badge--stars">★ 1.6k</span> <span class="hp-badge hp-badge--commit hp-badge--commit-dormant">last commit 5y 199d</span> <span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="tool" href="#">tool</a><a class="hp-tag" data-tag="burp" href="#">burp</a><a class="hp-tag" data-tag="plugin" href="#">plugin</a><a class="hp-tag" data-tag="extension" href="#">extension</a></span></li>
+        <li class="md-typeset"><a href="#">mithril</a> — IoT static scanner for secrets, SBOM, CVEs and more. <span class="hp-badge hp-badge--stars">★ 382</span> <span class="hp-badge hp-badge--commit hp-badge--commit-fresh">last commit 1d</span> <span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="tool" href="#">tool</a><a class="hp-tag" data-tag="secrets" href="#">secrets</a><a class="hp-tag" data-tag="scanner" href="#">scanner</a><a class="hp-tag" data-tag="cve" href="#">cve</a><a class="hp-tag" data-tag="firmware" href="#">firmware</a><a class="hp-tag" data-tag="iot" href="#">iot</a></span></li>
+        <li class="md-typeset"><a href="#">Damn-Vulnerable-Drone</a> — Damn Vulnerable Drone is an intentionally vulnerable drone hacking simulator based on the popular ArduPilot/MAVLink architecture, providing a realistic environment for hands-on drone hacking. <span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="lab" href="#">lab</a><a class="hp-tag" data-tag="drone" href="#">drone</a><a class="hp-tag" data-tag="mavlink" href="#">mavlink</a><a class="hp-tag" data-tag="ardupilot" href="#">ardupilot</a></span></li>
+      </ul>
+    </section>
+  </div>
+
+  <!-- ================= V1 ================= -->
+  <h2>V1 · bare block drop <span class="tag-badge">CSS only</span></h2>
+  <div class="notes">
+    <b>Change surface:</b> one rule in <code>THEME_CSS</code> →
+    <code>.hp-tags { display: block; margin-top: .3rem; }</code>. Zero markup change,
+    zero Python change, existing tests keep passing.<br>
+    <b>How it reads:</b> tags always start on the entry's own line, flush left under the
+    name. Chips that hover-lift stay per-chip. Minimal, most predictable option.
+  </div>
+  <div class="pair">
+    <section class="panel v1" data-scheme="dark"><figcaption>dark / slate</figcaption>
+      <ul class="md-typeset">
+        <li class="md-typeset"><a href="#">HackTricks</a> — A free, community-maintained cybersecurity knowledge base focused on offensive security. <span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="docs" href="#">docs</a></span></li>
+        <li class="md-typeset"><a href="#">HackBar</a> — HackBar plugin for Burpsuite. <span class="hp-badge hp-badge--stars">★ 1.6k</span> <span class="hp-badge hp-badge--commit hp-badge--commit-dormant">last commit 5y 199d</span> <span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="tool" href="#">tool</a><a class="hp-tag" data-tag="burp" href="#">burp</a><a class="hp-tag" data-tag="plugin" href="#">plugin</a><a class="hp-tag" data-tag="extension" href="#">extension</a></span></li>
+        <li class="md-typeset"><a href="#">mithril</a> — IoT static scanner for secrets, SBOM, CVEs and more. <span class="hp-badge hp-badge--stars">★ 382</span> <span class="hp-badge hp-badge--commit hp-badge--commit-fresh">last commit 1d</span> <span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="tool" href="#">tool</a><a class="hp-tag" data-tag="secrets" href="#">secrets</a><a class="hp-tag" data-tag="scanner" href="#">scanner</a><a class="hp-tag" data-tag="cve" href="#">cve</a><a class="hp-tag" data-tag="firmware" href="#">firmware</a><a class="hp-tag" data-tag="iot" href="#">iot</a></span></li>
+        <li class="md-typeset"><a href="#">Damn-Vulnerable-Drone</a> — Damn Vulnerable Drone is an intentionally vulnerable drone hacking simulator based on the popular ArduPilot/MAVLink architecture, providing a realistic environment for hands-on drone hacking. <span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="lab" href="#">lab</a><a class="hp-tag" data-tag="drone" href="#">drone</a><a class="hp-tag" data-tag="mavlink" href="#">mavlink</a><a class="hp-tag" data-tag="ardupilot" href="#">ardupilot</a></span></li>
+      </ul>
+    </section>
+    <section class="panel v1" data-scheme="default"><figcaption>light / default</figcaption>
+      <ul class="md-typeset">
+        <li class="md-typeset"><a href="#">HackTricks</a> — A free, community-maintained cybersecurity knowledge base focused on offensive security. <span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="docs" href="#">docs</a></span></li>
+        <li class="md-typeset"><a href="#">HackBar</a> — HackBar plugin for Burpsuite. <span class="hp-badge hp-badge--stars">★ 1.6k</span> <span class="hp-badge hp-badge--commit hp-badge--commit-dormant">last commit 5y 199d</span> <span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="tool" href="#">tool</a><a class="hp-tag" data-tag="burp" href="#">burp</a><a class="hp-tag" data-tag="plugin" href="#">plugin</a><a class="hp-tag" data-tag="extension" href="#">extension</a></span></li>
+        <li class="md-typeset"><a href="#">mithril</a> — IoT static scanner for secrets, SBOM, CVEs and more. <span class="hp-badge hp-badge--stars">★ 382</span> <span class="hp-badge hp-badge--commit hp-badge--commit-fresh">last commit 1d</span> <span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="tool" href="#">tool</a><a class="hp-tag" data-tag="secrets" href="#">secrets</a><a class="hp-tag" data-tag="scanner" href="#">scanner</a><a class="hp-tag" data-tag="cve" href="#">cve</a><a class="hp-tag" data-tag="firmware" href="#">firmware</a><a class="hp-tag" data-tag="iot" href="#">iot</a></span></li>
+        <li class="md-typeset"><a href="#">Damn-Vulnerable-Drone</a> — Damn Vulnerable Drone is an intentionally vulnerable drone hacking simulator based on the popular ArduPilot/MAVLink architecture, providing a realistic environment for hands-on drone hacking. <span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="lab" href="#">lab</a><a class="hp-tag" data-tag="drone" href="#">drone</a><a class="hp-tag" data-tag="mavlink" href="#">mavlink</a><a class="hp-tag" data-tag="ardupilot" href="#">ardupilot</a></span></li>
+      </ul>
+    </section>
+  </div>
+
+  <!-- ================= V2 ================= -->
+  <h2>V2 · hairline separator <span class="tag-badge">CSS only</span></h2>
+  <div class="notes">
+    <b>Change surface:</b> <code>.hp-tags { display: block; margin-top: .4rem; padding-top: .35rem;
+    border-top: 1px dashed var; }</code> — still CSS-only. Uses the theme's emerald at low alpha so it
+    works in both schemes.<br>
+    <b>How it reads:</b> the divider turns the tag row into a visible footer per entry; helps on dense
+    pages where rows already wrap. Slightly more vertical rhythm per entry.
+  </div>
+  <div class="pair">
+    <section class="panel v2" data-scheme="dark"><figcaption>dark / slate</figcaption>
+      <ul class="md-typeset">
+        <li class="md-typeset"><a href="#">HackTricks</a> — A free, community-maintained cybersecurity knowledge base focused on offensive security. <span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="docs" href="#">docs</a></span></li>
+        <li class="md-typeset"><a href="#">HackBar</a> — HackBar plugin for Burpsuite. <span class="hp-badge hp-badge--stars">★ 1.6k</span> <span class="hp-badge hp-badge--commit hp-badge--commit-dormant">last commit 5y 199d</span> <span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="tool" href="#">tool</a><a class="hp-tag" data-tag="burp" href="#">burp</a><a class="hp-tag" data-tag="plugin" href="#">plugin</a><a class="hp-tag" data-tag="extension" href="#">extension</a></span></li>
+        <li class="md-typeset"><a href="#">mithril</a> — IoT static scanner for secrets, SBOM, CVEs and more. <span class="hp-badge hp-badge--stars">★ 382</span> <span class="hp-badge hp-badge--commit hp-badge--commit-fresh">last commit 1d</span> <span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="tool" href="#">tool</a><a class="hp-tag" data-tag="secrets" href="#">secrets</a><a class="hp-tag" data-tag="scanner" href="#">scanner</a><a class="hp-tag" data-tag="cve" href="#">cve</a><a class="hp-tag" data-tag="firmware" href="#">firmware</a><a class="hp-tag" data-tag="iot" href="#">iot</a></span></li>
+        <li class="md-typeset"><a href="#">Damn-Vulnerable-Drone</a> — Damn Vulnerable Drone is an intentionally vulnerable drone hacking simulator based on the popular ArduPilot/MAVLink architecture, providing a realistic environment for hands-on drone hacking. <span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="lab" href="#">lab</a><a class="hp-tag" data-tag="drone" href="#">drone</a><a class="hp-tag" data-tag="mavlink" href="#">mavlink</a><a class="hp-tag" data-tag="ardupilot" href="#">ardupilot</a></span></li>
+      </ul>
+    </section>
+    <section class="panel v2" data-scheme="default"><figcaption>light / default</figcaption>
+      <ul class="md-typeset">
+        <li class="md-typeset"><a href="#">HackTricks</a> — A free, community-maintained cybersecurity knowledge base focused on offensive security. <span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="docs" href="#">docs</a></span></li>
+        <li class="md-typeset"><a href="#">HackBar</a> — HackBar plugin for Burpsuite. <span class="hp-badge hp-badge--stars">★ 1.6k</span> <span class="hp-badge hp-badge--commit hp-badge--commit-dormant">last commit 5y 199d</span> <span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="tool" href="#">tool</a><a class="hp-tag" data-tag="burp" href="#">burp</a><a class="hp-tag" data-tag="plugin" href="#">plugin</a><a class="hp-tag" data-tag="extension" href="#">extension</a></span></li>
+        <li class="md-typeset"><a href="#">mithril</a> — IoT static scanner for secrets, SBOM, CVEs and more. <span class="hp-badge hp-badge--stars">★ 382</span> <span class="hp-badge hp-badge--commit hp-badge--commit-fresh">last commit 1d</span> <span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="tool" href="#">tool</a><a class="hp-tag" data-tag="secrets" href="#">secrets</a><a class="hp-tag" data-tag="scanner" href="#">scanner</a><a class="hp-tag" data-tag="cve" href="#">cve</a><a class="hp-tag" data-tag="firmware" href="#">firmware</a><a class="hp-tag" data-tag="iot" href="#">iot</a></span></li>
+        <li class="md-typeset"><a href="#">Damn-Vulnerable-Drone</a> — Damn Vulnerable Drone is an intentionally vulnerable drone hacking simulator based on the popular ArduPilot/MAVLink architecture, providing a realistic environment for hands-on drone hacking. <span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="lab" href="#">lab</a><a class="hp-tag" data-tag="drone" href="#">drone</a><a class="hp-tag" data-tag="mavlink" href="#">mavlink</a><a class="hp-tag" data-tag="ardupilot" href="#">ardupilot</a></span></li>
+      </ul>
+    </section>
+  </div>
+
+  <!-- ================= V3 ================= -->
+  <h2>V3 · labelled tag row <span class="tag-badge">CSS only</span></h2>
+  <div class="notes">
+    <b>Change surface:</b> V1's rule plus a <code>.hp-tags::before { content: "tags:" }</code> in muted
+    mono — pure decoration, still CSS-only.<br>
+    <b>How it reads:</b> the label makes the row's purpose unmistakable and keeps entries with a single
+    chip (HackTricks) from looking orphaned. Costs a little horizontal space on chip-heavy rows.
+  </div>
+  <div class="pair">
+    <section class="panel v3" data-scheme="dark"><figcaption>dark / slate</figcaption>
+      <ul class="md-typeset">
+        <li class="md-typeset"><a href="#">HackTricks</a> — A free, community-maintained cybersecurity knowledge base focused on offensive security. <span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="docs" href="#">docs</a></span></li>
+        <li class="md-typeset"><a href="#">HackBar</a> — HackBar plugin for Burpsuite. <span class="hp-badge hp-badge--stars">★ 1.6k</span> <span class="hp-badge hp-badge--commit hp-badge--commit-dormant">last commit 5y 199d</span> <span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="tool" href="#">tool</a><a class="hp-tag" data-tag="burp" href="#">burp</a><a class="hp-tag" data-tag="plugin" href="#">plugin</a><a class="hp-tag" data-tag="extension" href="#">extension</a></span></li>
+        <li class="md-typeset"><a href="#">mithril</a> — IoT static scanner for secrets, SBOM, CVEs and more. <span class="hp-badge hp-badge--stars">★ 382</span> <span class="hp-badge hp-badge--commit hp-badge--commit-fresh">last commit 1d</span> <span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="tool" href="#">tool</a><a class="hp-tag" data-tag="secrets" href="#">secrets</a><a class="hp-tag" data-tag="scanner" href="#">scanner</a><a class="hp-tag" data-tag="cve" href="#">cve</a><a class="hp-tag" data-tag="firmware" href="#">firmware</a><a class="hp-tag" data-tag="iot" href="#">iot</a></span></li>
+        <li class="md-typeset"><a href="#">Damn-Vulnerable-Drone</a> — Damn Vulnerable Drone is an intentionally vulnerable drone hacking simulator based on the popular ArduPilot/MAVLink architecture, providing a realistic environment for hands-on drone hacking. <span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="lab" href="#">lab</a><a class="hp-tag" data-tag="drone" href="#">drone</a><a class="hp-tag" data-tag="mavlink" href="#">mavlink</a><a class="hp-tag" data-tag="ardupilot" href="#">ardupilot</a></span></li>
+      </ul>
+    </section>
+    <section class="panel v3" data-scheme="default"><figcaption>light / default</figcaption>
+      <ul class="md-typeset">
+        <li class="md-typeset"><a href="#">HackTricks</a> — A free, community-maintained cybersecurity knowledge base focused on offensive security. <span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="docs" href="#">docs</a></span></li>
+        <li class="md-typeset"><a href="#">HackBar</a> — HackBar plugin for Burpsuite. <span class="hp-badge hp-badge--stars">★ 1.6k</span> <span class="hp-badge hp-badge--commit hp-badge--commit-dormant">last commit 5y 199d</span> <span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="tool" href="#">tool</a><a class="hp-tag" data-tag="burp" href="#">burp</a><a class="hp-tag" data-tag="plugin" href="#">plugin</a><a class="hp-tag" data-tag="extension" href="#">extension</a></span></li>
+        <li class="md-typeset"><a href="#">mithril</a> — IoT static scanner for secrets, SBOM, CVEs and more. <span class="hp-badge hp-badge--stars">★ 382</span> <span class="hp-badge hp-badge--commit hp-badge--commit-fresh">last commit 1d</span> <span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="tool" href="#">tool</a><a class="hp-tag" data-tag="secrets" href="#">secrets</a><a class="hp-tag" data-tag="scanner" href="#">scanner</a><a class="hp-tag" data-tag="cve" href="#">cve</a><a class="hp-tag" data-tag="firmware" href="#">firmware</a><a class="hp-tag" data-tag="iot" href="#">iot</a></span></li>
+        <li class="md-typeset"><a href="#">Damn-Vulnerable-Drone</a> — Damn Vulnerable Drone is an intentionally vulnerable drone hacking simulator based on the popular ArduPilot/MAVLink architecture, providing a realistic environment for hands-on drone hacking. <span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="lab" href="#">lab</a><a class="hp-tag" data-tag="drone" href="#">drone</a><a class="hp-tag" data-tag="mavlink" href="#">mavlink</a><a class="hp-tag" data-tag="ardupilot" href="#">ardupilot</a></span></li>
+      </ul>
+    </section>
+  </div>
+
+  <!-- ================= V4 ================= -->
+  <h2>V4 · full meta row (badges + tags together) <span class="tag-badge">markup change</span></h2>
+  <div class="notes">
+    <b>Change surface:</b> the only variant that changes generated HTML.
+    <code>transform()</code> (build_site.py:192-193) currently appends badges then chips inline; it would
+    wrap both in <code>&lt;span class="hp-meta"&gt;</code> rendered as a block second line
+    (<code>badge_suffix</code> + <code>tag_chips</code> assembled once). Tests asserting the exact fragment
+    <code>' &lt;span class="hp-tags"&gt;'</code> after the description (test_build_site.py:97) need the new
+    shape; the filter JS still works (it reads <code>.hp-tags a.hp-tag</code> inside the li regardless).<br>
+    <b>How it reads:</b> line 1 is pure prose (name + description), line 2 is the whole metadata strip —
+    stars, freshness, then chips. Cleanest separation of content vs. metadata; most work.
+  </div>
+  <div class="pair">
+    <section class="panel v4" data-scheme="dark"><figcaption>dark / slate</figcaption>
+      <ul class="md-typeset">
+        <li class="md-typeset"><a href="#">HackTricks</a> — A free, community-maintained cybersecurity knowledge base focused on offensive security. <span class="hp-meta"><span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="docs" href="#">docs</a></span></span></li>
+        <li class="md-typeset"><a href="#">HackBar</a> — HackBar plugin for Burpsuite. <span class="hp-meta"><span class="hp-badge hp-badge--stars">★ 1.6k</span> <span class="hp-badge hp-badge--commit hp-badge--commit-dormant">last commit 5y 199d</span><span class="hp-sep">·</span><span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="tool" href="#">tool</a><a class="hp-tag" data-tag="burp" href="#">burp</a><a class="hp-tag" data-tag="plugin" href="#">plugin</a><a class="hp-tag" data-tag="extension" href="#">extension</a></span></span></li>
+        <li class="md-typeset"><a href="#">mithril</a> — IoT static scanner for secrets, SBOM, CVEs and more. <span class="hp-meta"><span class="hp-badge hp-badge--stars">★ 382</span> <span class="hp-badge hp-badge--commit hp-badge--commit-fresh">last commit 1d</span><span class="hp-sep">·</span><span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="tool" href="#">tool</a><a class="hp-tag" data-tag="secrets" href="#">secrets</a><a class="hp-tag" data-tag="scanner" href="#">scanner</a><a class="hp-tag" data-tag="cve" href="#">cve</a><a class="hp-tag" data-tag="firmware" href="#">firmware</a><a class="hp-tag" data-tag="iot" href="#">iot</a></span></span></li>
+        <li class="md-typeset"><a href="#">Damn-Vulnerable-Drone</a> — Damn Vulnerable Drone is an intentionally vulnerable drone hacking simulator based on the popular ArduPilot/MAVLink architecture, providing a realistic environment for hands-on drone hacking. <span class="hp-meta"><span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="lab" href="#">lab</a><a class="hp-tag" data-tag="drone" href="#">drone</a><a class="hp-tag" data-tag="mavlink" href="#">mavlink</a><a class="hp-tag" data-tag="ardupilot" href="#">ardupilot</a></span></span></li>
+      </ul>
+    </section>
+    <section class="panel v4" data-scheme="default"><figcaption>light / default</figcaption>
+      <ul class="md-typeset">
+        <li class="md-typeset"><a href="#">HackTricks</a> — A free, community-maintained cybersecurity knowledge base focused on offensive security. <span class="hp-meta"><span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="docs" href="#">docs</a></span></span></li>
+        <li class="md-typeset"><a href="#">HackBar</a> — HackBar plugin for Burpsuite. <span class="hp-meta"><span class="hp-badge hp-badge--stars">★ 1.6k</span> <span class="hp-badge hp-badge--commit hp-badge--commit-dormant">last commit 5y 199d</span><span class="hp-sep">·</span><span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="tool" href="#">tool</a><a class="hp-tag" data-tag="burp" href="#">burp</a><a class="hp-tag" data-tag="plugin" href="#">plugin</a><a class="hp-tag" data-tag="extension" href="#">extension</a></span></span></li>
+        <li class="md-typeset"><a href="#">mithril</a> — IoT static scanner for secrets, SBOM, CVEs and more. <span class="hp-meta"><span class="hp-badge hp-badge--stars">★ 382</span> <span class="hp-badge hp-badge--commit hp-badge--commit-fresh">last commit 1d</span><span class="hp-sep">·</span><span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="tool" href="#">tool</a><a class="hp-tag" data-tag="secrets" href="#">secrets</a><a class="hp-tag" data-tag="scanner" href="#">scanner</a><a class="hp-tag" data-tag="cve" href="#">cve</a><a class="hp-tag" data-tag="firmware" href="#">firmware</a><a class="hp-tag" data-tag="iot" href="#">iot</a></span></span></li>
+        <li class="md-typeset"><a href="#">Damn-Vulnerable-Drone</a> — Damn Vulnerable Drone is an intentionally vulnerable drone hacking simulator based on the popular ArduPilot/MAVLink architecture, providing a realistic environment for hands-on drone hacking. <span class="hp-meta"><span class="hp-tags"><a class="hp-tag hp-tag--type" data-tag="lab" href="#">lab</a><a class="hp-tag" data-tag="drone" href="#">drone</a><a class="hp-tag" data-tag="mavlink" href="#">mavlink</a><a class="hp-tag" data-tag="ardupilot" href="#">ardupilot</a></span></span></li>
+      </ul>
+    </section>
+  </div>
+
+  <h2>Notes that apply to every variant</h2>
+  <div class="notes">
+    <ul>
+      <li><b>Live filter unaffected:</b> tags-filter.js selects <code>.hp-tags a.hp-tag</code> per
+      <code>&lt;li&gt;</code> and toggles <code>.on</code> / <code>hp-hidden</code> — block display of the
+      wrapper changes nothing. Click-to-filter from the Tags hub also lands on the same <code>#e-</code>
+      anchors.</li>
+      <li><b>Deep links from the Tags hub:</b> unchanged — the anchor sits before the name in the li.</li>
+      <li><b>Long tag runs wrap naturally</b> on mobile (existing <code>@media (max-width: 30em)</code>
+      already shrinks chips); a block row never pushes the layout horizontally.</li>
+      <li><b>Entries without tags</b> keep their single prose line — the rule only applies when the
+      <code>hp-tags</code> span exists.</li>
+      <li><b>CONTRIBUTING.md wording</b> ("trailing tokens render as clickable tag chips on their line")
+      would need one sentence updated for whatever variant is picked.</li>
+    </ul>
+  </div>
+</main>
+</body>
+</html>
