@@ -416,6 +416,42 @@ class NightshellTheme(unittest.TestCase):
             self.assertIn(needle, js)
 
 
+class CollapsibleSidebar(unittest.TestCase):
+    # Desktop (>1220px) pins the left nav beside the content; the generator
+    # must ship a header toggle that hides it and reclaims the width.
+    @classmethod
+    def setUpClass(cls):
+        cls.docs = cached_build()
+        cls.yml = (cls.docs.parent / "mkdocs.yml").read_text(encoding="utf-8")
+
+    def test_sidebar_toggle_script_ships_in_config(self):
+        self.assertIn('"javascripts/sidebar-toggle.js"', self.yml)
+
+    def test_sidebar_toggle_js_shipped_with_persisted_state(self):
+        js = (self.docs / "javascripts" / "sidebar-toggle.js").read_text(encoding="utf-8")
+        # Button class, collapsed-state class, persistence and mount point.
+        for needle in ("hp-nav-toggle", "hp-nav-collapsed", "localStorage",
+                       "md-header__inner", "aria-pressed"):
+            self.assertIn(needle, js)
+
+    def test_collapse_css_is_desktop_only(self):
+        css = (self.docs / "stylesheets" / "theme.css").read_text(encoding="utf-8")
+        # Hidden below the drawer breakpoint: the off-canvas drawer and its
+        # hamburger are native there, a second toggle would be noise.
+        self.assertIn(".hp-nav-toggle { display: none; }", css)
+        # At >=1220px the button appears and the collapsed class hides the
+        # pinned sidebar; flex .md-content then reclaims its 12.1rem.
+        self.assertIn(
+            "@media screen and (min-width: 1220px) { .hp-nav-toggle "
+            "{ display: inline-flex; } html.hp-nav-collapsed .md-sidebar--primary "
+            "{ display: none; } }",
+            css)
+        # The collapse rule must live inside the desktop media query: a
+        # bare rule would also kill the drawer below 1220px.
+        self.assertLess(css.index("@media screen and (min-width: 1220px)"),
+                        css.index("html.hp-nav-collapsed .md-sidebar--primary"))
+
+
 class TagPerResource(unittest.TestCase):
     # S3/S4: entry pages show tags inside each entry line (chips), never as
     # page front matter or raw residue tokens.

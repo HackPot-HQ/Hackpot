@@ -348,6 +348,10 @@ a.hp-tag:active { transform: translateY(0); box-shadow: 0 1px 4px #10b98133; }
 [data-md-color-scheme="default"] .hp-badge--broken { background: #fee2e2; color: #991b1b; border-color: #ef444455; }
 @media (max-width: 30em) { .hp-badge { font-size: .58rem; padding: .08rem .4rem; } a.hp-tag { font-size: .58rem; padding: .05rem .4rem; } }
 @media (hover: none) { .hp-badge:hover { transform: none; box-shadow: none; } a.hp-tag:hover { transform: none; box-shadow: none; } }
+/* Collapsible primary sidebar: hidden below the 1220px drawer breakpoint,
+   where the off-canvas drawer and its hamburger are already native. */
+.hp-nav-toggle { display: none; }
+@media screen and (min-width: 1220px) { .hp-nav-toggle { display: inline-flex; } html.hp-nav-collapsed .md-sidebar--primary { display: none; } }
 """
 
 HOME_HERO = """<div class="hp-hero">
@@ -470,6 +474,57 @@ TAGS_FILTER_JS = """/* Hackpot per-resource tags: click a chip to add/remove its
 })();
 """
 
+# Collapsible primary sidebar (desktop): a header button hides the pinned
+# left nav so the content reclaims its width. State persists in
+# localStorage across pages. Progressive enhancement: without JS there is
+# no button and the sidebar behaves exactly as before; below 1220px the
+# CSS keeps the button hidden because the drawer is native there.
+SIDEBAR_TOGGLE_JS = """/* Hackpot collapsible left sidebar (desktop >=1220px). */
+(function () {
+  "use strict";
+  var KEY = "hackpot.nav.collapsed";
+  var root = document.documentElement;
+  var ICON_OPEN = '<path d="M9 3v18"/><path d="m14 9 3 3-3 3"/>';
+  var ICON_CLOSE = '<path d="M9 3v18"/><path d="m16 15-3-3 3-3"/>';
+  var FRAME = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" '
+    + 'fill="none" stroke="currentColor" stroke-width="2" '
+    + 'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+    + '<rect x="3" y="3" width="18" height="18" rx="2"/>';
+  function stored() {
+    try { return localStorage.getItem(KEY) === "1"; } catch (e) { return false; }
+  }
+  try {
+    if (stored()) root.classList.add("hp-nav-collapsed");
+  } catch (e) {}
+  function paint(btn, collapsed) {
+    btn.innerHTML = FRAME + (collapsed ? ICON_OPEN : ICON_CLOSE) + "</svg>";
+    btn.setAttribute("aria-pressed", collapsed ? "true" : "false");
+    var label = collapsed ? "Expand sidebar" : "Collapse sidebar";
+    btn.setAttribute("aria-label", label);
+    btn.title = label;
+  }
+  function mount() {
+    var head = document.querySelector(".md-header__inner");
+    if (!head || head.querySelector(".hp-nav-toggle")) return;
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "md-header__button md-icon hp-nav-toggle";
+    head.insertBefore(btn, head.firstChild);
+    paint(btn, root.classList.contains("hp-nav-collapsed"));
+    btn.addEventListener("click", function () {
+      var collapsed = root.classList.toggle("hp-nav-collapsed");
+      try { localStorage.setItem(KEY, collapsed ? "1" : "0"); } catch (e) {}
+      paint(btn, collapsed);
+    });
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", mount);
+  } else {
+    mount();
+  }
+})();
+"""
+
 
 def build(out_dir, repo_url):
     global DOCS
@@ -540,6 +595,7 @@ def build(out_dir, repo_url):
     scripts_dir = DOCS / "javascripts"
     scripts_dir.mkdir(parents=True, exist_ok=True)
     (scripts_dir / "tags-filter.js").write_text(TAGS_FILTER_JS, encoding="utf-8")
+    (scripts_dir / "sidebar-toggle.js").write_text(SIDEBAR_TOGGLE_JS, encoding="utf-8")
     # Self-hosted fonts and OFL license texts ship with the site.
     repo_fonts = ROOT / "assets" / "fonts"
     if repo_fonts.is_dir():
@@ -589,6 +645,7 @@ def build(out_dir, repo_url):
         "  - \"stylesheets/theme.css\"",
         "extra_javascript:",
         "  - \"javascripts/tags-filter.js\"",
+        "  - \"javascripts/sidebar-toggle.js\"",
         "plugins:",
         "  - search",
         "markdown_extensions:",
