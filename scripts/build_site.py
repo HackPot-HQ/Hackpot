@@ -557,9 +557,12 @@ NAV_SECTIONS_JS = """/* Hackpot persistent collapsible nav sections (>=0px, draw
     var sidebar = document.querySelector(".md-sidebar--primary");
     if (!sidebar) return;
     // Category groups only: the class filter plus the __nav_ id guard keep
-    // the __toc and __drawer toggles on their native behaviour.
+    // the __toc and __drawer toggles on their native behaviour. Default
+    // nested nav (no navigation.sections feature: it forces children open
+    // with pointer-events:none) marks every collapsible group
+    // md-nav__item--nested.
     var boxes = [].filter.call(
-      sidebar.querySelectorAll("li.md-nav__item--section > input.md-nav__toggle"),
+      sidebar.querySelectorAll("li.md-nav__item--nested > input.md-nav__toggle"),
       function (input) { return input.id.indexOf("__nav_") === 0; });
     if (!boxes.length) return;
     var open = {};
@@ -676,7 +679,6 @@ def build(out_dir, repo_url):
         "  language: \"en\"",
         "  font: false",
         "  features:",
-        "    - \"navigation.sections\"",
         "    - \"navigation.top\"",
         "    - \"navigation.footer\"",
         "    - \"toc.follow\"",

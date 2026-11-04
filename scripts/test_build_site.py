@@ -474,15 +474,29 @@ class NavSections(unittest.TestCase):
     def test_sections_script_ships_in_config(self):
         self.assertIn('"javascripts/nav-sections.js"', self.yml)
 
+    def test_no_static_section_feature_so_groups_stay_collapsible(self):
+        # navigation.sections renders groups as static headers:
+        # ".md-nav__item--section > .md-nav { display: block }" +
+        # "pointer-events: none" on the label. Only the default nested nav
+        # gives real collapse toggles. Regression pin for the user report
+        # (2026-11-04): "The 17 sections are not collapseble".
+        self.assertNotIn('"navigation.sections"', self.yml)
+        # The other nav features must survive the surgery.
+        for feature in ('"navigation.top"', '"navigation.footer"'):
+            self.assertIn(feature, self.yml)
+
     def test_sections_js_persists_multi_open_state(self):
         js = (self.docs / "javascripts" / "nav-sections.js").read_text(encoding="utf-8")
-        for needle in ("hackpot.nav.sections.open", "md-nav__item--section",
+        # Default nested nav: collapsible groups carry md-nav__item--nested.
+        for needle in ("hackpot.nav.sections.open", "md-nav__item--nested",
                        "md-nav__toggle", "md-nav__item--active",
                        "localStorage", 'addEventListener("change"'):
             self.assertIn(needle, js)
         # Scoped to nav section checkboxes: the TOC toggle (#__toc) and the
         # drawer toggle (#__drawer) must never be touched.
         self.assertIn('indexOf("__nav_")', js)
+        # The dead static-section selector must be gone.
+        self.assertNotIn("md-nav__item--section", js)
 
     def test_sections_state_is_a_list_not_a_single_open(self):
         # Multiple categories open at once = array semantics, not a radio.
