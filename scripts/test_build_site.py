@@ -361,6 +361,17 @@ class NightshellTheme(unittest.TestCase):
         self.assertIn('a.hp-tag.on::after { content: " \\2713"; font-weight: 700; }', css)
         self.assertIn(".hp-filterbar", css)
 
+    def test_tags_get_their_own_labelled_line(self):
+        # User pick (2026-11-04): PoC V3 "labelled tag row" — the chips leave
+        # the entry text flow: span.hp-tags becomes a block line under the
+        # entry, prefixed with a muted monospace "tags:" label. Only CSS
+        # changes; the span.hp-tags > a.hp-tag markup stays untouched, so the
+        # live filter and the Tags-hub deep links keep working as-is.
+        css = (self.docs / "stylesheets" / "theme.css").read_text(encoding="utf-8")
+        self.assertIn(".hp-tags { display: block; margin-top: .35rem; }", css)
+        self.assertIn('.hp-tags::before { content: "tags:";', css)
+        self.assertNotIn(".hp-tags { display: inline; }", css)
+
     def test_hero_padding_is_fluid(self):
         css = (self.docs / "stylesheets" / "theme.css").read_text(encoding="utf-8")
         # Fixed 2.2rem/2rem padding eats ~64px of a 360px phone screen; the

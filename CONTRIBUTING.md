@@ -25,9 +25,9 @@ Rules:
   - Type: ``type:tool``, `type:course`, `type:docs`, `type:wordlist`, `type:lab`, `type:article`, `type:video`
   - Platform or tech as needed: `linux`, `windows`, `aws`, `gdb`, ...
   - On the website the trailing tokens render as clickable tag chips on their
-    own entry: clicking a chip filters the page to the resources carrying that
-    tag (combined), and the Tags page groups every resource by tag. Keep
-    writing them exactly as above.
+    own labelled line under the entry: clicking a chip filters the page to the
+    resources carrying that tag (combined), and the Tags page groups every
+    resource by tag. Keep writing them exactly as above.
 - Do **not** add star counts, popularity badges, or "last updated" notes manually: CI appends them automatically on the site for entries linking a GitHub repository.
 
 ## License

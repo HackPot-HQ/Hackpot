@@ -320,7 +320,13 @@ a.hp-tag--type::before { content: "\\25C6 "; font-size: .55rem; }
 [data-md-color-scheme="default"] a.hp-tag--type { background: #10b981; color: #022c22; border-color: #10b981; }
 a.hp-tag.on { background: #10b981; color: #022c22; font-weight: 700; border-color: #10b981; }
 a.hp-tag.on::after { content: " \\2713"; font-weight: 700; }
-.hp-tags { display: inline; }
+/* User pick (2026-11-04, PoC V3): tag chips leave the entry text flow and
+   get their own line, prefixed with a muted "tags:" label. Markup stays
+   span.hp-tags > a.hp-tag, so the live filter and Tags-hub links are
+   unaffected; ::before is decoration only (the filter toolbar builds its own
+   chips outside this span). */
+.hp-tags { display: block; margin-top: .35rem; }
+.hp-tags::before { content: "tags:"; font-family: "JetBrains Mono", monospace; font-size: .62rem; color: var(--md-default-fg-color--light); letter-spacing: .06em; margin-right: .35rem; }
 a.hp-tag:hover { transform: translateY(-2px); box-shadow: 0 4px 14px #10b9813d; filter: brightness(1.12); }
 a.hp-tag:active { transform: translateY(0); box-shadow: 0 1px 4px #10b98133; }
 .hp-filterbar { position: sticky; top: 2.6rem; z-index: 4; background: var(--md-default-bg-color); border: 1px solid var(--md-default-fg-color--lightest); border-radius: 10px; padding: .55rem .8rem; margin: .6rem 0 1rem; }
