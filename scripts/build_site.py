@@ -529,66 +529,6 @@ SIDEBAR_TOGGLE_JS = """/* Hackpot collapsible left sidebar (desktop >=1220px). *
 })();
 """
 
-# Collapsible category groups: each 01..17 section hides its children until
-# the user opens it or enters a page inside it, any number of groups can be
-# open at once, and the user's open/closed choices survive page loads via
-# localStorage (the static build only ever re-opens the active section).
-# Stored by section label, not by checkbox id, because __nav_N ids are
-# positional and shift when the nav changes. Without JS the native
-# checkbox behaviour stands unchanged.
-NAV_SECTIONS_JS = """/* Hackpot persistent collapsible nav sections (>=0px, drawer included). */
-(function () {
-  "use strict";
-  var KEY = "hackpot.nav.sections.open";
-  function labelFor(input) {
-    var label = document.querySelector('label[for="' + input.id + '"]');
-    return label ? label.textContent.trim() : input.id;
-  }
-  function stored() {
-    try {
-      var parsed = JSON.parse(localStorage.getItem(KEY));
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (e) { return []; }
-  }
-  function persist(open) {
-    try {
-      localStorage.setItem(KEY, JSON.stringify(
-        Object.keys(open).filter(function (name) { return open[name]; })));
-    } catch (e) {}
-  }
-  function mount() {
-    var sidebar = document.querySelector(".md-sidebar--primary");
-    if (!sidebar) return;
-    // Category groups only: the class filter plus the __nav_ id guard keep
-    // the __toc and __drawer toggles on their native behaviour. Default
-    // nested nav (no navigation.sections feature: it forces children open
-    // with pointer-events:none) marks every collapsible group
-    // md-nav__item--nested.
-    var boxes = [].filter.call(
-      sidebar.querySelectorAll("li.md-nav__item--nested > input.md-nav__toggle"),
-      function (input) { return input.id.indexOf("__nav_") === 0; });
-    if (!boxes.length) return;
-    var open = {};
-    stored().forEach(function (name) { open[name] = true; });
-    boxes.forEach(function (input) {
-      // A user's explicit choice persists; entering a category opens it for
-      // this page only, without writing it to storage.
-      var entering = input.parentNode.classList.contains("md-nav__item--active");
-      input.checked = entering || !!open[labelFor(input)];
-      input.addEventListener("change", function () {
-        open[labelFor(input)] = input.checked;
-        persist(open);
-      });
-    });
-  }
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", mount);
-  } else {
-    mount();
-  }
-})();
-"""
-
 
 def build(out_dir, repo_url):
     global DOCS
@@ -660,7 +600,6 @@ def build(out_dir, repo_url):
     scripts_dir.mkdir(parents=True, exist_ok=True)
     (scripts_dir / "tags-filter.js").write_text(TAGS_FILTER_JS, encoding="utf-8")
     (scripts_dir / "sidebar-toggle.js").write_text(SIDEBAR_TOGGLE_JS, encoding="utf-8")
-    (scripts_dir / "nav-sections.js").write_text(NAV_SECTIONS_JS, encoding="utf-8")
     # Self-hosted fonts and OFL license texts ship with the site.
     repo_fonts = ROOT / "assets" / "fonts"
     if repo_fonts.is_dir():
@@ -710,7 +649,6 @@ def build(out_dir, repo_url):
         "extra_javascript:",
         "  - \"javascripts/tags-filter.js\"",
         "  - \"javascripts/sidebar-toggle.js\"",
-        "  - \"javascripts/nav-sections.js\"",
         "plugins:",
         "  - search",
         "markdown_extensions:",

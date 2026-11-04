@@ -470,15 +470,14 @@ class CollapsibleSidebar(unittest.TestCase):
 
 
 class NavSections(unittest.TestCase):
-    # Category groups (01..17) are collapsed until opened or visited, and
-    # any number of them stays open across page loads (localStorage).
+    # Category groups are collapse toggles, but their open/closed state is
+    # NEVER persisted: every load starts all-collapsed except the active
+    # branch, which the static build opens automatically.
+
     @classmethod
     def setUpClass(cls):
         cls.docs = cached_build()
         cls.yml = (cls.docs.parent / "mkdocs.yml").read_text(encoding="utf-8")
-
-    def test_sections_script_ships_in_config(self):
-        self.assertIn('"javascripts/nav-sections.js"', self.yml)
 
     def test_no_static_section_feature_so_groups_stay_collapsible(self):
         # navigation.sections renders groups as static headers:
@@ -491,24 +490,19 @@ class NavSections(unittest.TestCase):
         for feature in ('"navigation.top"', '"navigation.footer"'):
             self.assertIn(feature, self.yml)
 
-    def test_sections_js_persists_multi_open_state(self):
-        js = (self.docs / "javascripts" / "nav-sections.js").read_text(encoding="utf-8")
-        # Default nested nav: collapsible groups carry md-nav__item--nested.
-        for needle in ("hackpot.nav.sections.open", "md-nav__item--nested",
-                       "md-nav__toggle", "md-nav__item--active",
-                       "localStorage", 'addEventListener("change"'):
-            self.assertIn(needle, js)
-        # Scoped to nav section checkboxes: the TOC toggle (#__toc) and the
-        # drawer toggle (#__drawer) must never be touched.
-        self.assertIn('indexOf("__nav_")', js)
-        # The dead static-section selector must be gone.
-        self.assertNotIn("md-nav__item--section", js)
-
-    def test_sections_state_is_a_list_not_a_single_open(self):
-        # Multiple categories open at once = array semantics, not a radio.
-        js = (self.docs / "javascripts" / "nav-sections.js").read_text(encoding="utf-8")
-        self.assertIn("JSON.parse", js)
-        self.assertIn("JSON.stringify", js)
+    def test_section_state_is_never_persisted(self):
+        # User (2026-11-04, verbatim): "make it so the collapsed and not
+        # collapsed is not saved. It should allways start with all collapsed."
+        # The whole persistence layer is gone: no script, no config entry,
+        # no storage key anywhere in the shipped JS.
+        self.assertNotIn("nav-sections.js", self.yml)
+        self.assertFalse((self.docs / "javascripts" / "nav-sections.js").exists())
+        js = (self.docs / "javascripts" / "sidebar-toggle.js").read_text(encoding="utf-8")
+        self.assertNotIn("hackpot.nav.sections.open", js)
+        self.assertNotIn("md-nav__item--nested", js)
+        # The panel-hide preference (hackpot.nav.collapsed) is separate and
+        # deliberately still persists.
+        self.assertIn("hackpot.nav.collapsed", js)
 
 
 class TagPerResource(unittest.TestCase):
