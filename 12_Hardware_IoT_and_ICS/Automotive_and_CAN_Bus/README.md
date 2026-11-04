@@ -5,3 +5,4 @@ Tools for vehicle hacking and CAN bus analysis.
 ## Resources
 
 <!-- Format: - [Name](https://url) — what it does and why it matters. Tags: `type:tool|course|docs|wordlist|lab|article|video` `platform or tech` -->
+- [SavvyCAN](https://github.com/collin80/SavvyCAN) — QT based cross platform canbus tool. `type:tool` `can` `canbus` `reverse` `engineering`

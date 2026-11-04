@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-10-27T09:55:49Z",
+  "checked_at": "2026-10-30T11:22:01Z",
   "rate_limited": false,
   "repos": {
     "JoasASantos/Offensive-Security-AI-Models": {
@@ -7,28 +7,63 @@
       "last_update": "2026-09-28",
       "not_found": false,
       "pushed_at": "2026-09-28T14:34:47Z",
-      "stars": 746
+      "stars": 757
+    },
+    "SnaffCon/Snaffler": {
+      "default_branch": "master",
+      "last_update": "2026-02-27",
+      "not_found": false,
+      "pushed_at": "2026-02-27T00:57:16Z",
+      "stars": 2972
+    },
+    "caido/caido": {
+      "default_branch": "main",
+      "last_update": "2026-05-29",
+      "not_found": false,
+      "pushed_at": "2026-10-26T12:28:01Z",
+      "stars": 2714
     },
     "claration/impactor": {
       "default_branch": "main",
       "last_update": "2026-10-24",
       "not_found": false,
       "pushed_at": "2026-10-24T18:34:39Z",
-      "stars": 3637
+      "stars": 3685
+    },
+    "collin80/SavvyCAN": {
+      "default_branch": "QT6WIP",
+      "last_update": "2026-10-28",
+      "not_found": false,
+      "pushed_at": "2026-10-29T00:02:54Z",
+      "stars": 1900
     },
     "d3vilbug/HackBar": {
       "default_branch": "master",
       "last_update": "2021-04-15",
       "not_found": false,
       "pushed_at": "2021-04-15T11:26:55Z",
-      "stars": 1636
+      "stars": 1637
+    },
+    "davtur19/DotGit": {
+      "default_branch": "master",
+      "last_update": "2026-10-20",
+      "not_found": false,
+      "pushed_at": "2026-10-20T23:52:16Z",
+      "stars": 482
     },
     "lycheeverse/lychee": {
       "default_branch": "master",
       "last_update": "2026-10-26",
       "not_found": false,
       "pushed_at": "2026-10-26T15:26:21Z",
-      "stars": 4052
+      "stars": 4066
+    },
+    "nmatt0/mithril": {
+      "default_branch": "master",
+      "last_update": "2026-10-29",
+      "not_found": false,
+      "pushed_at": "2026-10-29T23:05:05Z",
+      "stars": 382
     }
   }
 }
