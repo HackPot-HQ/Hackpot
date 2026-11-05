@@ -8,3 +8,4 @@ Resources for tracking, gathering intelligence, and investigating targets using 
 - [9Ghz](https://9ghz.com/) — Check if your Email/Name/Username/Phone/IC/ID/SSN/Passport/IP in any data breach. `type:tool` `osint` `credentials` `password` `breach`
 - [Have I Been Pwned](https://haveibeenpwned.com/) — Check if an email address is in a data breach. `type:tool` `breach` `leaks` `credentials` `password`
 - [HistorialVehículo](https://www.historialvehiculo.com/) — Free spanish vehicle reports by license plate or VIN. `type:tool` `vin` `vehicle` `plate` `license`
+- [RouterHax](https://routerhax.com) — Website that provides default usernames and passwords for routers from different brands and models, helping users access their router administration panels. `type:docs` `router` `credentials` `usernames` `wifi`
