@@ -373,12 +373,26 @@ def parse_recent_diff(log_text):
                   key=lambda a: (a["iso"], a["name"].casefold()), reverse=True)
 
 
+def _is_shallow_repository():
+    try:
+        proc = subprocess.run(
+            ["git", "rev-parse", "--is-shallow-repository"],
+            cwd=ROOT, capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return proc.stdout.strip() == "true"
+
+
 def recent_additions():
-    """Upload history from git, newest first. Returns [] when git or the
-    history is unavailable (a shallow checkout needs fetch-depth: 0 in the
-    deploy/site-check workflows; without it the page degrades to a notice).
+    """Upload history from git, newest first. Returns [] when git is
+    unavailable OR the checkout is shallow: a depth-N clone diffs its
+    boundary commit against the empty tree, so every line would be
+    misattributed to that one author instead of degrading to a notice.
+    CI must check out with fetch-depth: 0 (deploy/site-check workflows).
     Entries renamed or removed since their upload are dropped later, at the
     join with the pages actually generated."""
+    if _is_shallow_repository():
+        return []
     fmt = "tformat:%n@@C@@\t%H\t%an\t%ae\t%aI"
     try:
         proc = subprocess.run(
