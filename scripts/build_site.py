@@ -42,6 +42,9 @@ RECENT_TIE_BONUS = 10          # a boundary day may add at most this many rows
 RECENT_README_RE = re.compile(r"^\d{2}_[^/]+(?:/[^/]+)?/README\.md$")
 ENTRY_HREF_RE = re.compile(r"^\s*[-*] \[([^\]]+)\]\(([^)]+)\)")
 NOREPLY_LOGIN_RE = re.compile(r"^\d+\+(.+)@users\.noreply\.github\.com$")
+# GitHub login grammar: alphanumerics, single internal hyphens, 1-39 chars,
+# no edge hyphens. Only logins matching this may become profile links.
+GITHUB_LOGIN_RE = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?")
 
 
 def load_meta():
@@ -319,6 +322,17 @@ def github_login(email, name):
     return name
 
 
+def uploader_credit(login):
+    """Markdown-safe uploader credit (risk finding R1: logins come from
+    commit author metadata, which no reviewed diff constrains). Only the
+    GitHub login grammar may become a profile link; anything else is
+    stripped to harmless display text, and '' becomes '@unknown'."""
+    if GITHUB_LOGIN_RE.fullmatch(login):
+        return f"[@{login}](https://github.com/{login})"
+    safe = re.sub(r"[^A-Za-z0-9._+-]", "", login)[:39]
+    return "@" + (safe or "unknown")
+
+
 def _added_entry(raw):
     """Parse one diffed '+' line as a resource entry; None if not one.
     Relative links are category/leaf navigation, never uploads."""
@@ -449,8 +463,7 @@ def render_recent(rows):
         line = f"- [{a['name']}]({a['doc']}#{a['anchor']})"
         if a["desc"]:
             line += f" — {a['desc']}"
-        login = htmlmod.escape(a["login"], quote=True)
-        line += f" — ⬆ [@{login}](https://github.com/{login}) · {a['date']}"
+        line += f" — ⬆ {uploader_credit(a['login'])} · {a['date']}"
         if a["tags"]:
             line += " " + tag_chips(a["tags"], "tags.md")
         lines.append(line)

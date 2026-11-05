@@ -726,6 +726,32 @@ class RecentUploads(unittest.TestCase):
         self.assertTrue(page.startswith("# Recent uploads"))
         self.assertIn("history", page.lower())
 
+    def test_uploader_credit_links_only_github_grammar_logins(self):
+        # GitHub logins: alphanumerics with single internal hyphens, 1-39,
+        # never edge-hyphen. Those (and only those) get the profile link.
+        good = {"name": "T", "doc": "d/index.md", "anchor": "e-t",
+                "desc": "", "tags": [], "date": "2026-11-05",
+                "iso": "2026-11-05T10:00:00+01:00"}
+        base = build_site.render_recent([dict(good, login="J0nan")])
+        self.assertIn("[@J0nan](https://github.com/J0nan)", base)
+        self.assertIn("[@a-b](https://github.com/a-b)",
+                      build_site.render_recent([dict(good, login="a-b")]))
+        # Anything outside the grammar is commit metadata we never reviewed:
+        # it must degrade to harmless text, never to markdown link syntax.
+        evil = build_site.render_recent(
+            [dict(good, login="ev[il](javascript:alert(1))x")])
+        self.assertNotIn("javascript:", evil)
+        self.assertNotIn("⬆ [@evil", evil)                # credit is not a link
+        self.assertNotIn("https://github.com/", evil.split("</p>", 1)[1])
+        self.assertIn("@eviljavascriptalert1x", evil)
+        forty = "a" * 40                      # over GitHub's 39-char cap
+        page = build_site.render_recent([dict(good, login=forty)])
+        self.assertNotIn("https://github.com/", page.split("</p>", 1)[1])
+        self.assertIn("@" + "a" * 39, page)
+        page = build_site.render_recent([dict(good, login="")])
+        self.assertIn("@unknown", page)
+        self.assertNotIn("[@unknown](", page)
+
     def test_shallow_checkout_yields_no_additions_not_misattribution(self):
         # Verifier advisory 1 (2026-11-05): in a depth-1 clone `git log -p`
         # diffs the boundary commit against the EMPTY tree, so every README
