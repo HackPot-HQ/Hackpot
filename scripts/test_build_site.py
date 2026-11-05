@@ -615,5 +615,146 @@ class TagPerResource(unittest.TestCase):
         self.assertIn('- <a id="e-x"></a>[X](https://x.test) — real entry.', out)
 
 
+class RecentUploads(unittest.TestCase):
+    # S1/S2 (odd/tasks/recent-uploads-view.md): a generated page compiling
+    # "almost the last 50" uploaded resources — tool, description, uploader —
+    # newest first, compiled from git history at site-generation time.
+
+    DIFF = "\n".join([
+        "@@C@@\tsha1\tRenovator\t1+renovator@users.noreply.github.com\t2026-11-05T10:00:00+01:00",
+        "diff --git a/01_Recon_and_OSINT/OSINT/README.md b/01_Recon_and_OSINT/OSINT/README.md",
+        "--- a/01_Recon_and_OSINT/OSINT/README.md",
+        "+++ b/01_Recon_and_OSINT/OSINT/README.md",
+        "@@ -5,0 +6,1 @@",
+        "+- [9Ghz](https://9ghz.com/) — Retouched wording. `type:tool` `osint`",
+        "+- [Overview bullet](../01_Recon_and_OSINT/README.md) — nav, not an upload. `x`",
+        "@@C@@\tsha2\tFirst\t42+first@users.noreply.github.com\t2026-11-01T09:00:00+01:00",
+        "diff --git a/01_Recon_and_OSINT/OSINT/README.md b/01_Recon_and_OSINT/OSINT/README.md",
+        "--- a/01_Recon_and_OSINT/OSINT/README.md",
+        "+++ b/01_Recon_and_OSINT/OSINT/README.md",
+        "@@ -5,0 +6,1 @@",
+        "+- [9Ghz](https://9ghz.com/) — Check if you are in any data breach. `type:tool` `osint`",
+        "+- [HIBP](https://haveibeenpwned.com/) — Check if an email is pwned. `type:tool` `breach`",
+        "@@C@@\tsha3\tDocwriter\t3+docs@users.noreply.github.com\t2026-10-20T09:00:00+01:00",
+        "diff --git a/CONTRIBUTING.md b/CONTRIBUTING.md",
+        "--- a/CONTRIBUTING.md",
+        "+++ b/CONTRIBUTING.md",
+        "@@ -1,0 +2,1 @@",
+        "+- [Example](https://example.com) — outside the categories. `x`",
+        "",
+    ])
+
+    def _add(self, name, date):
+        return {"name": name, "url": "https://x.test/" + name,
+                "desc": "does things.", "tags": [("tool", True)],
+                "path": "01_Recon_and_OSINT/OSINT/README.md",
+                "date": date, "iso": date + "T12:00:00+01:00", "login": "someone"}
+
+    def test_parse_recent_diff_oldest_addition_wins_and_noise_is_dropped(self):
+        adds = build_site.parse_recent_diff(self.DIFF)
+        self.assertEqual({a["name"] for a in adds}, {"9Ghz", "HIBP"})
+        nine = next(a for a in adds if a["name"] == "9Ghz")
+        # The 2026-11-05 edit re-added the line but must not bump the upload:
+        # date, wording and uploader all come from the FIRST addition.
+        self.assertEqual(nine["date"], "2026-11-01")
+        self.assertEqual(nine["desc"], "Check if you are in any data breach.")
+        self.assertEqual(nine["login"], "first")
+        self.assertEqual(nine["tags"], [("tool", True), ("osint", False)])
+
+    def test_github_login_prefers_the_noreply_login(self):
+        self.assertEqual(build_site.github_login(
+            "46595866+J0nan@users.noreply.github.com", "Jonan"), "J0nan")
+        self.assertEqual(build_site.github_login("mail@example.com", "Jonan"), "mail")
+        self.assertEqual(build_site.github_login("", "Jonan"), "Jonan")
+
+    def test_select_recent_keeps_only_live_entries_and_uses_page_anchor(self):
+        adds = [self._add("Live", "2026-11-05"), self._add("Gone", "2026-11-04")]
+        locs = {("01_Recon_and_OSINT/OSINT/index.md", "live"):
+                ("e-live", [("tool", True), ("breach", False)])}
+        rows = build_site.select_recent(adds, locs)
+        self.assertEqual([r["name"] for r in rows], ["Live"])
+        self.assertEqual(rows[0]["anchor"], "e-live")
+        self.assertEqual(rows[0]["tags"], [("tool", True), ("breach", False)])
+
+    def test_select_recent_never_splits_a_same_day_batch_at_the_cap(self):
+        adds = ([self._add(f"new{i:02d}", "2026-11-05") for i in range(48)]
+                + [self._add(f"day{i:02d}", "2026-11-04") for i in range(4)]
+                + [self._add(f"old{i:02d}", "2026-11-03") for i in range(3)])
+        locs = {(a["path"][:-len("README.md")] + "index.md", a["name"].casefold()):
+                ("e-" + a["name"].casefold(), []) for a in adds}
+        rows = build_site.select_recent(adds, locs, limit=50)
+        self.assertEqual(len(rows), 52)          # whole 2026-11-04 batch survives
+        self.assertEqual(rows[-1]["date"], "2026-11-04")
+        self.assertNotIn("2026-11-03", {r["date"] for r in rows})
+
+    def test_select_recent_hard_stops_at_cap_plus_tie_bonus(self):
+        # A single boundary day bigger than the cap must not blow the page up:
+        # 50 + at most 10 tie rows.
+        adds = ([self._add(f"t{i:03d}", "2026-11-05") for i in range(60)]
+                + [self._add(f"e{i:03d}", "2026-11-04") for i in range(5)])
+        locs = {(a["path"][:-len("README.md")] + "index.md", a["name"].casefold()):
+                ("e-" + a["name"].casefold(), []) for a in adds}
+        rows = build_site.select_recent(adds, locs, limit=50)
+        self.assertEqual(len(rows), 60)
+
+    def test_render_recent_row_shows_tool_description_and_uploader(self):
+        rows = [
+            {"name": "9Ghz", "doc": "01_Recon_and_OSINT/OSINT/index.md",
+             "anchor": "e-9ghz", "desc": "Check if you are in any data breach.",
+             "tags": [("tool", True), ("osint", False)], "login": "J0nan",
+             "date": "2026-11-05", "iso": "2026-11-05T10:00:00+01:00"},
+            {"name": "OldTool", "doc": "01_Recon_and_OSINT/OSINT/index.md",
+             "anchor": "e-oldtool", "desc": "Was here before.", "tags": [],
+             "login": "Vallejos115", "date": "2026-10-30",
+             "iso": "2026-10-30T10:00:00+01:00"},
+        ]
+        page = build_site.render_recent(rows)
+        self.assertTrue(page.startswith("# Recent uploads"))
+        self.assertIn("- [9Ghz](01_Recon_and_OSINT/OSINT/index.md#e-9ghz) — "
+                      "Check if you are in any data breach.", page)
+        self.assertIn("— ⬆ [@J0nan](https://github.com/J0nan) · 2026-11-05", page)
+        self.assertIn('href="tags.md#t-tool"', page)   # chips into the Tags hub
+        self.assertLess(page.index("[9Ghz]"), page.index("[OldTool]"),
+                        "newest first")
+        old_line = next(l for l in page.split("\n") if l.startswith("- [OldTool]"))
+        self.assertNotIn("hp-tags", old_line)          # untagged entry: no span
+
+    def test_render_recent_without_history_degrades_to_notice(self):
+        page = build_site.render_recent([])
+        self.assertTrue(page.startswith("# Recent uploads"))
+        self.assertIn("history", page.lower())
+
+
+class RecentUploadsGenerated(unittest.TestCase):
+    # End-to-end over the real repo: the page is generated by build(), the
+    # nav places it before Tags, and its deep links resolve.
+    @classmethod
+    def setUpClass(cls):
+        cls.docs = cached_build()
+        cls.yml = (cls.docs.parent / "mkdocs.yml").read_text(encoding="utf-8")
+
+    def test_recent_page_generated_before_tags_in_nav(self):
+        self.assertIn('"Recent uploads": "recent.md"', self.yml)
+        self.assertLess(self.yml.index('"Recent uploads": "recent.md"'),
+                        self.yml.index('"Tags": "tags.md"'))
+        page = (self.docs / "recent.md").read_text(encoding="utf-8")
+        self.assertTrue(page.startswith("# Recent uploads"))
+
+    def test_recent_rows_deep_link_existing_entry_anchors_and_uploaders(self):
+        page = (self.docs / "recent.md").read_text(encoding="utf-8")
+        links = re.findall(r"^- \[[^\]]+\]\(([^)]+)\)", page, re.M)
+        if not links:
+            self.skipTest("no git history available for this build")
+        # Every live resource added through git is listed: the POC measured
+        # 100% history coverage (Log L3), so the list must not be a stub.
+        self.assertGreaterEqual(len(links), 20)
+        for target in links:
+            path, frag = target.split("#", 1)
+            text = (self.docs / path).read_text(encoding="utf-8")
+            self.assertIn(f'<a id="{frag}"></a>', text, f"{target} dangling")
+        self.assertRegex(page, r"⬆ \[@[^\]]+\]\(https://github\.com/")
+        self.assertLessEqual(len(links), 60)
+
+
 if __name__ == "__main__":
     unittest.main()

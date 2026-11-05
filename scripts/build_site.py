@@ -35,6 +35,14 @@ TAG_TYPE_PREFIX = "type:"
 FORMAT_COMMENT_RE = re.compile(r"^\s*<!--\s*Format:")
 CATEGORY_DIR_RE = re.compile(r"^\d{2}_")
 
+# Recent uploads view (docs/recent.md): compiled from git history at
+# site-generation time — the repo stores nothing; docs/ is generated+ignored.
+RECENT_LIMIT = 50
+RECENT_TIE_BONUS = 10          # a boundary day may add at most this many rows
+RECENT_README_RE = re.compile(r"^\d{2}_[^/]+(?:/[^/]+)?/README\.md$")
+ENTRY_HREF_RE = re.compile(r"^\s*[-*] \[([^\]]+)\]\(([^)]+)\)")
+NOREPLY_LOGIN_RE = re.compile(r"^\d+\+(.+)@users\.noreply\.github\.com$")
+
 
 def load_meta():
     path = ROOT / "meta" / "resources-meta.json"
@@ -300,7 +308,143 @@ def render_tags(index):
     return "\n".join(lines)
 
 
-def convert(source, dest, meta, repo_url, tagged=False, sink=None):
+def github_login(email, name):
+    """Display login for a commit author: noreply emails carry it as the
+    id+login part; otherwise fall back to the email local part, then name."""
+    m = NOREPLY_LOGIN_RE.match(email or "")
+    if m:
+        return m.group(1)
+    if email and not email.startswith("noreply@"):
+        return email.split("@")[0]
+    return name
+
+
+def _added_entry(raw):
+    """Parse one diffed '+' line as a resource entry; None if not one.
+    Relative links are category/leaf navigation, never uploads."""
+    if not LIST_ITEM_RE.match(raw):
+        return None
+    m = ENTRY_HREF_RE.match(raw)
+    if not m:
+        return None
+    name, url = m.group(1), m.group(2)
+    if not url.startswith(("http://", "https://")):
+        return None
+    return {"name": name, "url": url,
+            "desc": entry_description(strip_trailing_tags(raw)),
+            "tags": entry_tags(raw)}
+
+
+def parse_recent_diff(log_text):
+    """First-addition record per (README path, entry name) from a
+    `git log --no-merges -p -U0 --format=<@@C@@ marker>` stream.
+
+    The stream is walked newest-first and records overwrite, so the OLDEST
+    commit that added the line owns the upload: later rewordings never bump
+    a resource back into "recent". Doc-example bullets inside ``` fences
+    can't be fence-tracked through a bare '+' line, but they reference fake
+    URLs that are absent from the generated pages, so select_recent drops
+    them at the join. Newest first."""
+    commit = None
+    path = None
+    additions = {}
+    # Never let a commit header ride on the previous line (tformat does not
+    # guarantee a leading newline for every header).
+    for line in log_text.replace("@@C@@", "\n@@C@@").split("\n"):
+        if line.startswith("@@C@@"):
+            parts = line.split("\t")
+            commit = None if len(parts) != 5 else {
+                "iso": parts[4], "date": parts[4][:10],
+                "login": github_login(parts[3], parts[2]),
+            }
+            path = None
+        elif line.startswith("+++ b/"):
+            path = line[len("+++ b/"):]
+            if not RECENT_README_RE.match(path):
+                path = None
+        elif path and commit and line.startswith("+") and not line.startswith("+++"):
+            parsed = _added_entry(line[1:])
+            if parsed:
+                additions[(path, parsed["name"].casefold())] = {
+                    **parsed, "path": path,
+                    "date": commit["date"], "iso": commit["iso"],
+                    "login": commit["login"]}
+    return sorted(additions.values(),
+                  key=lambda a: (a["iso"], a["name"].casefold()), reverse=True)
+
+
+def recent_additions():
+    """Upload history from git, newest first. Returns [] when git or the
+    history is unavailable (a shallow checkout needs fetch-depth: 0 in the
+    deploy/site-check workflows; without it the page degrades to a notice).
+    Entries renamed or removed since their upload are dropped later, at the
+    join with the pages actually generated."""
+    fmt = "tformat:%n@@C@@\t%H\t%an\t%ae\t%aI"
+    try:
+        proc = subprocess.run(
+            ["git", "-c", "core.quotepath=false", "log", "--no-merges",
+             "-p", "-U0", f"--format={fmt}", "--", "*README.md"],
+            cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+            errors="replace", timeout=120)
+    except (OSError, subprocess.SubprocessError):
+        return []
+    if proc.returncode != 0:
+        return []
+    return parse_recent_diff(proc.stdout)
+
+
+def select_recent(additions, locations, limit=RECENT_LIMIT):
+    """Join history with the generated pages ((doc, name) -> anchor, tags)
+    and cut the "almost the last 50" list. Only resources still on the site
+    survive. The cut never splits a same-day upload batch — unless that one
+    day already overflows limit + RECENT_TIE_BONUS, which hard-caps the
+    page."""
+    rows = []
+    for a in additions:
+        doc = a["path"][: -len("README.md")] + "index.md"
+        loc = locations.get((doc, a["name"].casefold()))
+        if loc is None:
+            continue
+        anchor, tags = loc
+        rows.append({**a, "doc": doc, "anchor": anchor, "tags": tags})
+    if len(rows) > limit:
+        cut = limit
+        boundary = rows[cut - 1]["date"]
+        while (cut < len(rows) and rows[cut]["date"] == boundary
+               and cut < limit + RECENT_TIE_BONUS):
+            cut += 1
+        rows = rows[:cut]
+    return rows
+
+
+def render_recent(rows):
+    """Recent uploads hub: newest first, one line per upload — the tool
+    deep-linked to its anchored entry like the Tags hub does, its catalog
+    description, its tag chips and the contributor who uploaded it."""
+    lines = ["# Recent uploads", "",
+             '<p class="hp-tag-sub">The newest additions to the catalog,',
+             "compiled from the repository history when the site is",
+             "generated, newest first. Each line links to the resource on",
+             "its page and credits the contributor who uploaded it.</p>",
+             ""]
+    if not rows:
+        lines.append("_No upload history was available when this site was "
+                     "generated._")
+        return "\n".join(lines) + "\n"
+    for a in rows:
+        line = f"- [{a['name']}]({a['doc']}#{a['anchor']})"
+        if a["desc"]:
+            line += f" — {a['desc']}"
+        login = htmlmod.escape(a["login"], quote=True)
+        line += f" — ⬆ [@{login}](https://github.com/{login}) · {a['date']}"
+        if a["tags"]:
+            line += " " + tag_chips(a["tags"], "tags.md")
+        lines.append(line)
+    return "\n".join(lines) + "\n"
+
+
+def convert(source, dest, meta, repo_url, tagged=False, sink=None,
+            entries=None):
     text = source.read_text(encoding="utf-8")
     dest.parent.mkdir(parents=True, exist_ok=True)
     rel_dir = dest.parent.relative_to(DOCS).as_posix()
@@ -314,6 +458,12 @@ def convert(source, dest, meta, repo_url, tagged=False, sink=None):
         for name, entry_anchor, tags, desc in page_hits:
             for tag, _is_type in tags:
                 sink.setdefault(tag, []).append((name, doc, entry_anchor, desc))
+    if entries is not None:
+        # (doc, lowercased name) -> (anchor, tags): the live join key for
+        # the Recent uploads view, fed by the anchors transform just minted.
+        doc = dest.relative_to(DOCS).as_posix()
+        for name, entry_anchor, tags, _desc in page_hits:
+            entries.setdefault((doc, name.casefold()), (entry_anchor, tags))
     return dest.relative_to(DOCS).as_posix()
 
 
@@ -601,9 +751,11 @@ def build(out_dir, repo_url):
     if (ROOT / "CONTRIBUTING.md").exists():
         convert(ROOT / "CONTRIBUTING.md", DOCS / "contributing.md", meta, repo_url)
         nav.append(("Contributing", "contributing.md"))
+    nav.append(("Recent uploads", "recent.md"))
     nav.append(("Tags", "tags.md"))
 
     tag_index = {}
+    recent_locations = {}
     category_pages = []
     for category_dir in sorted(
         p for p in ROOT.iterdir() if p.is_dir() and CATEGORY_DIR_RE.match(p.name)
@@ -613,17 +765,20 @@ def build(out_dir, repo_url):
         cat_nav = []
         cat_file = f"{category_dir.name}/index.md"
         convert(category_dir / "README.md", DOCS / cat_file, meta, repo_url,
-                tagged=True, sink=tag_index)
+                tagged=True, sink=tag_index, entries=recent_locations)
         cat_nav.append(("Overview", cat_file))
         for leaf_dir in sorted(p for p in category_dir.iterdir() if p.is_dir()):
             leaf_title = page_title(leaf_dir / "README.md")
             leaf_file = f"{category_dir.name}/{leaf_dir.name}/index.md"
             convert(leaf_dir / "README.md", DOCS / leaf_file, meta, repo_url,
-                    tagged=True, sink=tag_index)
+                    tagged=True, sink=tag_index, entries=recent_locations)
             cat_nav.append((leaf_title, leaf_file))
         category_pages.append((cat_crumb, cat_nav))
     nav.extend(category_pages)
     (DOCS / "tags.md").write_text(render_tags(tag_index), encoding="utf-8")
+    (DOCS / "recent.md").write_text(
+        render_recent(select_recent(recent_additions(), recent_locations)),
+        encoding="utf-8")
 
     checked = meta.get("checked_at")
     if checked:
