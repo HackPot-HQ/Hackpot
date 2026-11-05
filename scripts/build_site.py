@@ -151,6 +151,21 @@ def strip_trailing_tags(line):
     return TRAILING_TAGS_RE.sub("", line).rstrip()
 
 
+LEADING_LINK_RE = re.compile(r"\[[^\]]*\]\([^)]*\)\s*")
+DESC_SEPARATOR_RE = re.compile(r"^\s*[—–-]\s*")
+
+
+def entry_description(line):
+    """The human description text of an entry line: whatever follows its
+    leading [Name](url) link with the ' — ' separator trimmed. Tags must
+    already be stripped; an entry with no description returns ''."""
+    body = ENTRY_NAME_RE.sub("", line, count=1)
+    m = LEADING_LINK_RE.match(body)
+    if not m:
+        return ""
+    return DESC_SEPARATOR_RE.sub("", body[m.end():]).strip()
+
+
 def transform(text, meta, repo_url, tagged=False, tags_href="", sink=None):
     out_lines = []
     in_fence = False
@@ -176,6 +191,7 @@ def transform(text, meta, repo_url, tagged=False, tags_href="", sink=None):
                 tags = entry_tags(line)
                 if tags:
                     line = strip_trailing_tags(line)
+                    desc = entry_description(line)
                     prefix_m = ENTRY_NAME_RE.match(line)
                     prefix = prefix_m.group(1)
                     name_m = re.match(r"\[([^\]]+)\]", line[len(prefix):])
@@ -188,7 +204,7 @@ def transform(text, meta, repo_url, tagged=False, tags_href="", sink=None):
                     line = (prefix + f'<a id="{anchor}"></a>' + line[len(prefix):])
                     if sink is not None:
                         sink.append((name_m.group(1) if name_m else "entry",
-                                     anchor, tags))
+                                     anchor, tags, desc))
                     line = line.rstrip() + badge_suffix(line, meta)
                     line = line + " " + tag_chips(tags, tags_href)
                     out_lines.append(line)
@@ -241,32 +257,50 @@ def tag_chips(tags, tags_href):
 
 
 def render_tags(index):
-    """Tags hub page: every tag groups the resources it labels (tag->entries),
-    each linking straight to its anchored entry on the category page."""
-    lines = ["# Tags", "",
-             "Every tag used across the catalog, grouped by the resources it",
-             "labels. Each line links straight to that resource on its page;",
-             "on a resource page, clicking a chip filters the list in place.",
-             ""]
+    """Tags hub page: one bordered section per tag listing the exact resources
+    it labels (tag -> entries, not pages), each line linking straight to its
+    anchored entry and showing that resource's catalog description."""
+
+    def tag_order(t):
+        return t.casefold()
+
     used_ids = set()
-    for tag in sorted(index, key=lambda t: t.casefold()):
-        anchor = "t-" + slugify(tag)
-        base, n = anchor, 2
+    anchors = {}
+    for tag in sorted(index, key=tag_order):
+        base = "t-" + slugify(tag)
+        anchor, n = base, 2
         while anchor in used_ids:
             anchor = f"{base}-{n}"
             n += 1
         used_ids.add(anchor)
-        lines.append(f'<a id="{anchor}"></a>')
+        anchors[tag] = anchor
+
+    lines = ["# Tags", "",
+             '<p class="hp-tag-sub">Every tag used across the catalog, grouped by',
+             "the resources it labels. Each line links straight to that resource",
+             "on its page; on a resource page, clicking a chip filters the list",
+             "in place.</p>",
+             ""]
+
+    for tag in sorted(index, key=tag_order):
+        count = len(index[tag])
+        noun = "resource" if count == 1 else "resources"
+        lines.append(f'<a id="{anchors[tag]}"></a>')
         lines.append(f"## {tag}")
         lines.append("")
-        for name, doc, entry_anchor, crumb in sorted(
+        lines.append(f'<p class="hp-tagcount">{count} {noun}</p>')
+        lines.append("")
+        for name, doc, entry_anchor, desc in sorted(
                 index[tag], key=lambda i: (i[0].casefold(), i[1], i[2])):
-            lines.append(f"- [{name}]({doc}#{entry_anchor}) — {crumb}")
+            line = f"- [{name}]({doc}#{entry_anchor})"
+            if desc:
+                line += f" — {desc}"
+            lines.append(line)
         lines.append("")
     return "\n".join(lines)
 
 
-def convert(source, dest, meta, repo_url, tagged=False, sink=None, crumb=""):
+def convert(source, dest, meta, repo_url, tagged=False, sink=None):
     text = source.read_text(encoding="utf-8")
     dest.parent.mkdir(parents=True, exist_ok=True)
     rel_dir = dest.parent.relative_to(DOCS).as_posix()
@@ -277,9 +311,9 @@ def convert(source, dest, meta, repo_url, tagged=False, sink=None, crumb=""):
     dest.write_text(body, encoding="utf-8")
     if sink is not None:
         doc = dest.relative_to(DOCS).as_posix()
-        for name, entry_anchor, tags in page_hits:
+        for name, entry_anchor, tags, desc in page_hits:
             for tag, _is_type in tags:
-                sink.setdefault(tag, []).append((name, doc, entry_anchor, crumb))
+                sink.setdefault(tag, []).append((name, doc, entry_anchor, desc))
     return dest.relative_to(DOCS).as_posix()
 
 
@@ -361,6 +395,13 @@ a.hp-tag:active { transform: translateY(0); box-shadow: 0 1px 4px #10b98133; }
    leaks the button into the mobile header, so out-specify it. */
 .md-header .md-header__button.hp-nav-toggle { display: none; }
 @media screen and (min-width: 1220px) { .md-header .md-header__button.hp-nav-toggle { display: inline-flex; } html.hp-nav-collapsed .md-sidebar--primary { display: none; } }
+/* Tags hub: one bordered section per tag listing the exact resources it
+   labels, each shown with its catalog description. Markup is span/p plus a
+   plain markdown bullet list, so the shared a.hp-tag chip style and the
+   #t-... anchors the category-page chips link into stay untouched. */
+.md-typeset .hp-tag-sub { color: var(--md-default-fg-color--light); }
+.md-typeset p.hp-tagcount { font-family: "JetBrains Mono", monospace; font-size: .72rem; color: var(--md-default-fg-color--light); letter-spacing: .04em; margin: -.3rem 0 .35rem; }
+.md-typeset p.hp-tagcount + ul { border-left: 3px solid #10b981; padding-left: 1.05rem; margin: 0 0 .2rem; }
 """
 
 HOME_HERO = """<div class="hp-hero">
@@ -572,13 +613,13 @@ def build(out_dir, repo_url):
         cat_nav = []
         cat_file = f"{category_dir.name}/index.md"
         convert(category_dir / "README.md", DOCS / cat_file, meta, repo_url,
-                tagged=True, sink=tag_index, crumb=cat_crumb)
+                tagged=True, sink=tag_index)
         cat_nav.append(("Overview", cat_file))
         for leaf_dir in sorted(p for p in category_dir.iterdir() if p.is_dir()):
             leaf_title = page_title(leaf_dir / "README.md")
             leaf_file = f"{category_dir.name}/{leaf_dir.name}/index.md"
             convert(leaf_dir / "README.md", DOCS / leaf_file, meta, repo_url,
-                    tagged=True, sink=tag_index, crumb=f"{cat_crumb} / {leaf_title}")
+                    tagged=True, sink=tag_index)
             cat_nav.append((leaf_title, leaf_file))
         category_pages.append((cat_crumb, cat_nav))
     nav.extend(category_pages)

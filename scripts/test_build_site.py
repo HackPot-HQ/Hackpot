@@ -123,7 +123,8 @@ class EntryTags(unittest.TestCase):
         build_site.transform(
             "- [9Ghz](https://9ghz.com/) — x. `type:tool` `breach`\n",
             {}, None, tagged=True, tags_href="tags.md", sink=sink)
-        self.assertEqual(sink, [("9Ghz", "e-9ghz", [("tool", True), ("breach", False)])])
+        self.assertEqual(sink, [("9Ghz", "e-9ghz", [("tool", True), ("breach", False)],
+                                "x.")])
 
     def test_adjacent_inline_code_pins_current_semantics(self):
         # Advisory (verifier, 2026-10-29): a token directly abutting the
@@ -137,16 +138,38 @@ class EntryTags(unittest.TestCase):
     def test_tags_page_renders_resources_grouped_by_tag(self):
         hub = build_site.render_tags({
             "breach": [("9Ghz", "01_Recon_and_OSINT/OSINT/index.md", "e-9ghz",
-                        "01 · Recon and OSINT / OSINT")],
+                        "Check if you are in any data breach.")],
             "tool": [("9Ghz", "01_Recon_and_OSINT/OSINT/index.md", "e-9ghz",
-                      "01 · Recon and OSINT / OSINT")],
+                      "Check if you are in any data breach.")],
         })
         self.assertTrue(hub.startswith("# Tags"))
         self.assertIn('<a id="t-breach"></a>\n## breach\n', hub)
-        self.assertIn("- [9Ghz](01_Recon_and_OSINT/OSINT/index.md#e-9ghz) — "
-                      "01 · Recon and OSINT / OSINT", hub)
+        # the resource line shows its description, not the category path
+        self.assertIn('- [9Ghz](01_Recon_and_OSINT/OSINT/index.md#e-9ghz) — '
+                      'Check if you are in any data breach.', hub)
+        self.assertNotIn("class=\"where\"", hub)
+        self.assertNotIn("01 ·", hub)
         # sections sorted case-insensitively by tag
         self.assertLess(hub.index("t-breach"), hub.index("t-tool"))
+
+    def test_tags_sections_show_per_tag_resource_counts(self):
+        # No top cloud (removed by user feedback 2026-11-05): the hub starts
+        # straight at the sections, each headed by its resource count.
+        hub = build_site.render_tags({
+            "breach": [("9Ghz", "01_Recon_and_OSINT/OSINT/index.md", "e-9ghz",
+                        "01 · Recon and OSINT / OSINT")],
+            "osint": [("9Ghz", "01_Recon_and_OSINT/OSINT/index.md", "e-9ghz",
+                       "01 · Recon and OSINT / OSINT"),
+                      ("theHarvester", "01_Recon_and_OSINT/OSINT/index.md",
+                       "e-theharvester", "01 · Recon and OSINT / OSINT")],
+        })
+        self.assertNotIn("hp-cloud", hub)
+        self.assertEqual(hub.index("<a id="), hub.index('<a id="t-breach"'),
+                         "sections must start right after the intro")
+        self.assertIn('<a id="t-breach"></a>\n## breach\n\n'
+                      '<p class="hp-tagcount">1 resource</p>', hub)
+        self.assertIn('<a id="t-osint"></a>\n## osint\n\n'
+                      '<p class="hp-tagcount">2 resources</p>', hub)
 
     def test_home_and_contributing_have_no_front_matter(self):
         docs = cached_build()
@@ -413,12 +436,21 @@ class NightshellTheme(unittest.TestCase):
         self.assertTrue(hub.startswith("# Tags"))
         self.assertNotIn("<!-- material/tags -->", hub)
         self.assertIn('"Tags": "tags.md"', self.yml)
+        # No top tag cloud (removed by user feedback 2026-11-05); each section
+        # still opens with its resource count.
+        self.assertNotIn("hp-cloud", hub)
+        self.assertRegex(hub,
+                         r'(?s)<a id="t-osint"></a>\n## osint\n\n'
+                         r'<p class="hp-tagcount">\d+ resources?</p>')
         # Real catalog data drives the index (breach comes from 9Ghz/HIBP).
         self.assertIn('<a id="t-breach"></a>', hub)
         self.assertIn("[9Ghz](01_Recon_and_OSINT/OSINT/index.md#e-9ghz)", hub)
         self.assertIn("[Have I Been Pwned]"
                       "(01_Recon_and_OSINT/OSINT/index.md#e-have-i-been-pwned)", hub)
-        self.assertIn("01 · Reconnaissance and OSINT / OSINT", hub)
+        # Each line shows the resource description, not its category path.
+        self.assertIn("— Check if an email address is in a data breach.", hub)
+        self.assertNotIn("class=\"where\"", hub)
+        self.assertNotIn("· Reconnaissance and OSINT / OSINT", hub)
 
     def test_tags_filter_js_shipped(self):
         # S2: the live filter script is generated next to the theme assets.
