@@ -672,19 +672,17 @@ class RecentUploads(unittest.TestCase):
 
     def test_select_recent_keeps_only_live_entries_and_uses_page_anchor(self):
         adds = [self._add("Live", "2026-11-05"), self._add("Gone", "2026-11-04")]
-        locs = {("01_Recon_and_OSINT/OSINT/index.md", "live"):
-                ("e-live", [("tool", True), ("breach", False)])}
+        locs = {("01_Recon_and_OSINT/OSINT/index.md", "live"): "e-live"}
         rows = build_site.select_recent(adds, locs)
         self.assertEqual([r["name"] for r in rows], ["Live"])
         self.assertEqual(rows[0]["anchor"], "e-live")
-        self.assertEqual(rows[0]["tags"], [("tool", True), ("breach", False)])
 
     def test_select_recent_never_splits_a_same_day_batch_at_the_cap(self):
         adds = ([self._add(f"new{i:02d}", "2026-11-05") for i in range(48)]
                 + [self._add(f"day{i:02d}", "2026-11-04") for i in range(4)]
                 + [self._add(f"old{i:02d}", "2026-11-03") for i in range(3)])
         locs = {(build_site.site_doc(a["path"]), a["name"].casefold()):
-                ("e-" + a["name"].casefold(), []) for a in adds}
+                "e-" + a["name"].casefold() for a in adds}
         rows = build_site.select_recent(adds, locs, limit=build_site.RECENT_LIMIT)
         self.assertEqual(len(rows), 52)          # whole 2026-11-04 batch survives
         self.assertEqual(rows[-1]["date"], "2026-11-04")
@@ -696,7 +694,7 @@ class RecentUploads(unittest.TestCase):
         adds = ([self._add(f"t{i:03d}", "2026-11-05") for i in range(60)]
                 + [self._add(f"e{i:03d}", "2026-11-04") for i in range(5)])
         locs = {(build_site.site_doc(a["path"]), a["name"].casefold()):
-                ("e-" + a["name"].casefold(), []) for a in adds}
+                "e-" + a["name"].casefold() for a in adds}
         rows = build_site.select_recent(adds, locs, limit=build_site.RECENT_LIMIT)
         self.assertEqual(len(rows),
                          build_site.RECENT_LIMIT + build_site.RECENT_TIE_BONUS)

@@ -4,8 +4,11 @@ The READMEs are the single source of truth: this script mirrors them into
 docs/ (git-ignored), rewrites relative links for Zensical, injects star and
 freshness badges for GitHub repositories (from meta/resources-meta.json),
 renders each entry's backtick tags as per-resource chips that filter the page
-and link into a generated tag->resources hub (tags.md), and writes the site
-configuration. Run by .github/workflows/deploy-docs.yml.
+and link into a generated tag->resources hub (tags.md), compiles the Recent
+uploads hub (recent.md) — the newest resources with an own-line avatar credit
+of uploader and date, taken from git first-addition history and shown
+without chips — and writes the site configuration. Run by
+.github/workflows/deploy-docs.yml.
 """
 
 import argparse
@@ -45,6 +48,9 @@ NOREPLY_LOGIN_RE = re.compile(r"^\d+\+(.+)@users\.noreply\.github\.com$")
 # GitHub login grammar: alphanumerics, single internal hyphens, 1-39 chars,
 # no edge hyphens. Only logins matching this may become profile links.
 GITHUB_LOGIN_RE = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?")
+# Display charset for logins outside the grammar: markdown- and
+# HTML-inert characters only.
+CREDIT_SAFE_TEXT_RE = re.compile(r"[^A-Za-z0-9._+-]")
 # git log pretty format whose tab-separated fields parse_recent_diff()
 # unpacks (marker, sha, author name, author email, strict-ISO date), one
 # header per commit. The two must stay in sync.
@@ -354,7 +360,9 @@ def uploader_credit(login, when, ref=None):
                f'src="https://github.com/{login}.png?size=48" alt="" '
                f'title="{login}">[@{login}](https://github.com/{login})')
     else:
-        safe = re.sub(r"[^A-Za-z0-9._+-]", "", login)[:39]
+        # Same credit purpose, zero markup: stripped to the inert display
+        # charset, capped at the grammar's own 39-char ceiling.
+        safe = CREDIT_SAFE_TEXT_RE.sub("", login)[:39]
         who = "@" + (safe or "unknown")
     return f"{who} · {upload_age(when, ref)} ({format_date(when)})"
 
@@ -460,19 +468,18 @@ def site_doc(readme_path):
 
 
 def select_recent(additions, locations, limit=RECENT_LIMIT):
-    """Join history with the generated pages ((doc, name) -> anchor, tags)
-    and cut the "almost the last 50" list. Only resources still on the site
+    """Join history with the generated pages ((doc, name) -> anchor) and
+    cut the "almost the last 50" list. Only resources still on the site
     survive. The cut never splits a same-day upload batch — unless that one
     day already overflows limit + RECENT_TIE_BONUS, which hard-caps the
     page."""
     rows = []
     for a in additions:
         doc = site_doc(a["path"])
-        loc = locations.get((doc, a["name"].casefold()))
-        if loc is None:
+        anchor = locations.get((doc, a["name"].casefold()))
+        if anchor is None:
             continue
-        anchor, tags = loc
-        rows.append({**a, "doc": doc, "anchor": anchor, "tags": tags})
+        rows.append({**a, "doc": doc, "anchor": anchor})
     if len(rows) > limit:
         cut = limit
         boundary = rows[cut - 1]["date"]
@@ -525,10 +532,10 @@ def convert(source, dest, meta, repo_url, tagged=False, sink=None,
             for tag, _is_type in tags:
                 sink.setdefault(tag, []).append((name, doc, entry_anchor, desc))
         if entries is not None:
-            # (doc, lowercased name) -> (anchor, tags): the live join key
-            # for the Recent uploads view, fed by the anchors that
-            # transform just minted.
-            entries.setdefault((doc, name.casefold()), (entry_anchor, tags))
+            # (doc, lowercased name) -> anchor: the live join key for the
+            # Recent uploads view, fed by the anchors that transform just
+            # minted. Tags are not needed here: the view shows no chips.
+            entries.setdefault((doc, name.casefold()), entry_anchor)
     return doc
 
 
