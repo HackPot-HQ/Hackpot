@@ -127,6 +127,7 @@ COMMIT_BADGE = ('<span class="hp-badge hp-badge--commit hp-badge--commit-{}">'
                 'last commit {}</span>')
 COMMIT_BADGE_DATED = '<span class="hp-badge hp-badge--commit">last commit {}</span>'
 BROKEN_BADGE = '<span class="hp-badge hp-badge--broken">\u26a0\ufe0f repo not found</span>'
+BADGES_LINE = '<span class="hp-badges">{}</span>'
 
 
 def commit_badge(entry, meta):
@@ -144,8 +145,10 @@ def commit_badge(entry, meta):
 def badge_suffix(line, meta):
     """Badge text for the first GitHub repo link in a list item, '' if none.
 
-    Badges are theme-styled chip spans; the palette lives in THEME_CSS so
-    light/dark schemes are handled in CSS."""
+    Badges are theme-styled chip spans wrapped in one span.hp-badges line;
+    the palette lives in THEME_CSS so light/dark schemes are handled in CSS.
+    The wrapper renders as its own block line (user pick 2026-11-06),
+    emitted before the tags line by transform."""
     repos = meta.get("repos") or {}
     for url in GITHUB_URL_RE.findall(line):
         slug = github_slug(url)
@@ -153,13 +156,13 @@ def badge_suffix(line, meta):
         if not entry:
             continue
         if entry.get("not_found"):
-            return " " + BROKEN_BADGE
+            return " " + BADGES_LINE.format(BROKEN_BADGE)
         parts = []
         if entry.get("stars") is not None:
             parts.append(STARS_BADGE.format(format_stars(entry["stars"])))
         if entry.get("last_update"):
             parts.append(commit_badge(entry, meta))
-        return (" " + " ".join(parts)) if parts else ""
+        return (" " + BADGES_LINE.format(" ".join(parts))) if parts else ""
     return ""
 
 
@@ -587,6 +590,13 @@ a.hp-tag.on::after { content: " \\2713"; font-weight: 700; }
    chips outside this span). */
 .hp-tags { display: block; margin-top: .35rem; }
 .hp-tags::before { content: "tags:"; font-family: "JetBrains Mono", monospace; font-size: .62rem; color: var(--md-default-fg-color--light); letter-spacing: .06em; margin-right: .35rem; }
+/* User pick (2026-11-06): the stars/last-commit pills leave the entry text
+   flow the same way — span.hp-badges is its own block line, rendered before
+   the tags line (transform emits it first). Pills inside stay inline. */
+.hp-badges { display: block; margin-top: .35rem; }
+/* User pick (2026-11-06): labelled stats row, mirroring the "tags:" label:
+   same muted JetBrains Mono decoration, only the content string differs. */
+.hp-badges::before { content: "repo stats:"; font-family: "JetBrains Mono", monospace; font-size: .62rem; color: var(--md-default-fg-color--light); letter-spacing: .06em; margin-right: .35rem; }
 a.hp-tag:hover { transform: translateY(-2px); box-shadow: 0 4px 14px #10b9813d; filter: brightness(1.12); }
 a.hp-tag:active { transform: translateY(0); box-shadow: 0 1px 4px #10b98133; }
 .hp-credit { display: block; margin-top: .4rem; font-size: .78rem; color: #94a3b8; }

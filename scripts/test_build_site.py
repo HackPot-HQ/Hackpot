@@ -103,6 +103,21 @@ class EntryTags(unittest.TestCase):
             '<a class="hp-tag" data-tag="linux"'
             ' href="../../tags.md#t-linux">linux</a></span>\n')
 
+    def test_badge_line_comes_before_the_tags_line(self):
+        # User pick (2026-11-06): the stars/last-commit pills get their own
+        # line like the tags, rendered BEFORE the tags line. Markup order is
+        # the render order of the two block lines, so the badges span must
+        # precede the chips span inside the entry bullet.
+        meta = {"checked_at": "2026-10-27",
+                "repos": {"owner/repo": {"stars": 500,
+                                         "last_update": "2026-10-01"}}}
+        out = build_site.transform(
+            "- [X](https://github.com/owner/repo) — does things. `linux`\n",
+            meta, None, tagged=True, tags_href="tags.md")
+        self.assertIn('class="hp-badges"', out)
+        self.assertLess(out.index('class="hp-badges"'),
+                        out.index('class="hp-tags"'))
+
     def test_tag_chips_type_first_then_alphabetical(self):
         # Website requirement: chips show every tag of the resource sorted
         # alphabetically, with the type tag always first regardless of the
@@ -212,9 +227,10 @@ class Badges(unittest.TestCase):
         suffix = build_site.badge_suffix("[X](https://github.com/owner/repo) — x", meta)
         self.assertEqual(
             suffix,
-            ' <span class="hp-badge hp-badge--stars">★ 12.0k</span>'
+            ' <span class="hp-badges">'
+            '<span class="hp-badge hp-badge--stars">★ 12.0k</span>'
             ' <span class="hp-badge hp-badge--commit hp-badge--commit-fresh">'
-            'last commit 26d</span>')
+            'last commit 26d</span></span>')
 
     def test_commit_tier_boundaries(self):
         # Option A: fresh <=30d, active 31-180d, aging 181-365d, dormant >365d.
@@ -244,8 +260,9 @@ class Badges(unittest.TestCase):
         suffix = build_site.badge_suffix("[X](https://github.com/owner/repo) — x", meta)
         self.assertEqual(
             suffix,
-            ' <span class="hp-badge hp-badge--commit hp-badge--commit-dormant">'
-            'last commit 2y</span>')
+            ' <span class="hp-badges">'
+            '<span class="hp-badge hp-badge--commit hp-badge--commit-dormant">'
+            'last commit 2y</span></span>')
 
     def test_aging_pill_uses_amber_tier(self):
         meta = {
@@ -255,8 +272,9 @@ class Badges(unittest.TestCase):
         suffix = build_site.badge_suffix("[X](https://github.com/owner/repo) — x", meta)
         self.assertEqual(
             suffix,
-            ' <span class="hp-badge hp-badge--commit hp-badge--commit-aging">'
-            'last commit 299d</span>')
+            ' <span class="hp-badges">'
+            '<span class="hp-badge hp-badge--commit hp-badge--commit-aging">'
+            'last commit 299d</span></span>')
 
     def test_future_update_clamps_to_fresh_zero_days(self):
         # Clock skew must never render "last commit -3d".
@@ -283,7 +301,8 @@ class Badges(unittest.TestCase):
         suffix = build_site.badge_suffix("[X](https://github.com/owner/repo) — x", meta)
         self.assertEqual(
             suffix,
-            ' <span class="hp-badge hp-badge--commit">last commit 01-10-2026</span>')
+            ' <span class="hp-badges">'
+            '<span class="hp-badge hp-badge--commit">last commit 01-10-2026</span></span>')
 
     def test_entry_lines_survive_transform(self):
         # Differential pin: content pages must keep their entry bullets.
@@ -489,6 +508,22 @@ class NightshellTheme(unittest.TestCase):
         self.assertIn(".hp-tags { display: block; margin-top: .35rem; }", css)
         self.assertIn('.hp-tags::before { content: "tags:";', css)
         self.assertNotIn(".hp-tags { display: inline; }", css)
+
+    def test_badges_get_their_own_line_like_tags(self):
+        # User pick (2026-11-06): stars/last-commit leave the entry text flow
+        # the same way: span.hp-badges is a block line (rendered before the
+        # tags line), the pills inside keep their inline chip style.
+        # User pick (2026-11-06): the line gets a muted monospace
+        # "repo stats:" label, mirroring the tags label rule exactly down to
+        # the styling — only the content string differs.
+        css = (self.docs / "stylesheets" / "theme.css").read_text(encoding="utf-8")
+        self.assertIn(".hp-badges { display: block; margin-top: .35rem; }", css)
+        self.assertIn('.hp-badges::before { content: "repo stats:";', css)
+        tags_rule = css[css.index(".hp-tags::before {"):
+                        css.index("}", css.index(".hp-tags::before {")) + 1]
+        mirror = (tags_rule.replace('"tags:"', '"repo stats:"')
+                             .replace(".hp-tags::before", ".hp-badges::before"))
+        self.assertIn(mirror, css)
 
     def test_hero_padding_is_fluid(self):
         css = (self.docs / "stylesheets" / "theme.css").read_text(encoding="utf-8")
