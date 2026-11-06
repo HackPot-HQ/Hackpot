@@ -96,12 +96,21 @@ class EntryTags(unittest.TestCase):
             {}, None, tagged=True, tags_href="../../tags.md")
         self.assertEqual(
             out,
-            '- <a id="e-x"></a>[X](https://x.test) — does things.'
+            '- <a id="e-x"></a>[**X**](https://x.test) — does things.'
             ' <span class="hp-tags">'
             '<a class="hp-tag hp-tag--type" data-tag="tool"'
             ' href="../../tags.md#t-tool">tool</a>'
             '<a class="hp-tag" data-tag="linux"'
             ' href="../../tags.md#t-linux">linux</a></span>\n')
+
+    def test_tool_name_is_bold_on_resource_entries(self):
+        # User pick (2026-11-06): the linked tool name of an entry renders
+        # bold on resource pages. Anchors, sink names (Tags hub / Recent view
+        # link text), and fenced examples stay plain.
+        out = build_site.transform(
+            "- [X](https://x.test) — does things. `type:tool`\n",
+            {}, None, tagged=True, tags_href="tags.md")
+        self.assertIn('- <a id="e-x"></a>[**X**](https://x.test)', out)
 
     def test_badge_line_comes_before_the_tags_line(self):
         # User pick (2026-11-06): the stars/last-commit pills get their own
@@ -697,8 +706,9 @@ class TagPerResource(unittest.TestCase):
         self.assertGreaterEqual(checked, 1, "expected at least one page with chips")
         leaf = self.docs / "08_Web_Application" / "Vulnerability_Specific" / "index.md"
         leaf_text = leaf.read_text(encoding="utf-8")
-        # entry bullets survive (names stay searchable) and carry their chips
-        self.assertIn("[HackBar]", leaf_text)
+        # entry bullets survive (names stay searchable, rendered bold since
+        # 2026-11-06) and carry their chips
+        self.assertIn("[**HackBar**]", leaf_text)
         self.assertIn('<a id="e-hackbar"></a>', leaf_text)
         self.assertIn('data-tag="burp"', leaf_text)
         self.assertIn('href="../../tags.md#t-burp"', leaf_text)
@@ -742,7 +752,7 @@ class TagPerResource(unittest.TestCase):
         out = build_site.transform(src, {}, None, tagged=True, tags_href="tags.md")
         self.assertIn(
             "- [Name](https://example.com) — what it does. `type:tool` `linux`", out)
-        self.assertIn('- <a id="e-x"></a>[X](https://x.test) — real entry.', out)
+        self.assertIn('- <a id="e-x"></a>[**X**](https://x.test) — real entry.', out)
 
 
 class RecentUploads(unittest.TestCase):

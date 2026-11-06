@@ -168,6 +168,12 @@ def badge_suffix(line, meta):
 
 TRAILING_TAGS_RE = re.compile(r"(?:\s*\x60[^\x60\n]+\x60)+\s*$")
 
+# User pick (2026-11-06): an entry's linked tool name renders bold on the
+# resource pages. Applied only when assembling the emitted line, so anchors,
+# the sink names feeding the Tags hub and Recent view, and fenced examples
+# keep the plain spelling.
+NAME_BOLD_RE = re.compile(r"^\[([^\]]+)\]\(")
+
 
 def strip_trailing_tags(line):
     """Drop the trailing tag-token run of an entry line, keeping any inline
@@ -225,7 +231,8 @@ def transform(text, meta, repo_url, tagged=False, tags_href="", sink=None):
                         anchor = f"{base}-{n}"
                         n += 1
                     used_anchors.add(anchor)
-                    line = (prefix + f'<a id="{anchor}"></a>' + line[len(prefix):])
+                    line = (prefix + f'<a id="{anchor}"></a>'
+                            + NAME_BOLD_RE.sub(r"[**\1**](", line[len(prefix):]))
                     if sink is not None:
                         sink.append((name_m.group(1) if name_m else "entry",
                                      anchor, tags, desc))
