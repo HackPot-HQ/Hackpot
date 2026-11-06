@@ -15,9 +15,9 @@ Categories follow the kill chain: recon → initial access → foothold and oper
 | [01 · Reconnaissance and OSINT](01_Recon_and_OSINT/README.md) | Information gathering, port scanning, subdomain enumeration |
 | [02 · Social Engineering](02_Social_Engineering/README.md) | Phishing, vishing/smishing, and pretexting |
 | [03 · Physical Security](03_Physical_Security/README.md) | Locks, badges, and surveillance countermeasures |
-| [04 · Wireless and RF](04_Wireless_and_RF/README.md) | Wi-Fi, Bluetooth/BLE, Zigbee, and SDR |
-| [05 · Exploitation and Privilege Escalation](05_Exploitation_and_PrivEsc/README.md) | C2 and exploitation frameworks, CVE PoC aggregators, Linux/macOS/Windows privesc |
-| [06 · Red Team Operations](06_Red_Team_Operations/README.md) | AV/EDR evasion, C2 tradecraft, and living off the land |
+| [04 · Wireless and RF](04_Wireless_and_RF/README.md) | Wi-Fi, Bluetooth/BLE, Zigbee, SDR, and cellular/telecom |
+| [05 · Exploitation and Privilege Escalation](05_Exploitation_and_PrivEsc/README.md) | Exploit development and fuzzing, exploitation frameworks, CVE PoC aggregators, Linux/macOS/Windows privesc |
+| [06 · Red Team Operations](06_Red_Team_Operations/README.md) | AV/EDR evasion, C2 tradecraft, exfiltration and tunneling, operator OPSEC, and living off the land |
 | [07 · Network and Infrastructure](07_Network_and_Infrastructure/README.md) | Active Directory, NAC, and packet analysis |
 | [08 · Web Application Hacking](08_Web_Application/README.md) | Proxies, scanners, APIs, bruteforcing, flaw-specific tools |
 | [09 · Mobile](09_Mobile/README.md) | Android, iOS, and cross-platform mobile tooling |
@@ -27,8 +27,8 @@ Categories follow the kill chain: recon → initial access → foothold and oper
 | [13 · Reverse Engineering](13_Reverse_Engineering/README.md) | Disassemblers, decompilers, malware analysis |
 | [14 · Cryptography and Cracking](14_Cryptography_and_Cracking/README.md) | Password and hash cracking, steganography |
 | [15 · AI and Machine Learning](15_AI_and_Machine_Learning/README.md) | Attacking AI systems, AI-assisted offense, and AI coding tools |
-| [16 · Wordlists and Payloads](16_Wordlists_and_Payloads/README.md) | Dictionaries and reverse-shell payloads |
-| [17 · Learning and Resources](17_Learning_and_Resources/README.md) | Blogs, podcasts, cheat sheets, practice labs |
+| [16 · Wordlists and Payloads](16_Wordlists_and_Payloads/README.md) | Dictionaries, payload collections, and reverse-shell payloads |
+| [17 · Learning and Resources](17_Learning_and_Resources/README.md) | Blogs, podcasts, cheat sheets, methodology standards, practice labs, reporting and engagement tooling |
 
 ## How the list works
 
