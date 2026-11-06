@@ -6,3 +6,4 @@ AI-powered tools and autonomous agents that accelerate offensive work: recon, ex
 
 <!-- Format: - [Name](https://url) — what it does and why it matters. Tags: `type:tool|course|docs|wordlist|lab|article|video` `platform or tech` -->
 - [Offensive-Security-AI-Models](https://github.com/JoasASantos/Offensive-Security-AI-Models) — Uncensored AI models or those fine-tuned for cybersecurity tasks. `type:docs` `ai` `models` `offensive`
+- [pentagi](https://github.com/vxcontrol/pentagi) — Fully autonomous AI Agents system capable of performing complex penetration testing tasks. `type:tool` `agents` `autonomous` `pentesting`
