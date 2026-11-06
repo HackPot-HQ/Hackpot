@@ -590,11 +590,43 @@ a.hp-tag:active { transform: translateY(0); box-shadow: 0 1px 4px #10b98133; }
 .hp-avatar { width: 20px; height: 20px; border-radius: 50%; vertical-align: -4px; margin-right: .45rem; }
 [data-md-color-scheme="default"] .hp-credit { color: #64748b; }
 [data-md-color-scheme="default"] .hp-credit a { color: #047857; }
-.hp-filterbar { position: sticky; top: 2.6rem; z-index: 4; background: var(--md-default-bg-color); border: 1px solid var(--md-default-fg-color--lightest); border-radius: 10px; padding: .55rem .8rem; margin: .6rem 0 1rem; }
+/* User pick (2026-11-06): the toolbar scrolls with the page (no sticky) and
+   is a collapsed <details> by default; the summary line keeps the count,
+   clear and index link reachable while the chips stay hidden. The marker is
+   a funnel painted through a CSS mask (a data-URI SVG, no font dependency).
+   Muted when closed, accent when open.
+   CRITICAL: Zensical restyles EVERY .md-typeset details/summary as a "note"
+   admonition — blue background, an absolute blue-circle-pencil ::before
+   (--md-admonition-icon--note IS a pencil), a chevron ::after and a
+   focus-within glow. Their "[dir=ltr] .md-typeset summary::before" is
+   specificity (0,2,2), so every rule here out-specifies it with
+   .md-typeset + the bar class + the element types, and resets the
+   admonition decorations (position/padding/background/border/font-weight). */
+.md-typeset .hp-filterbar { background: var(--md-default-bg-color); border: 1px solid var(--md-default-fg-color--lightest); border-radius: 10px; padding: .65rem .8rem; margin: .6rem 0 1rem; color: inherit; }
+.md-typeset .hp-filterbar:focus-within { box-shadow: none; }
+/* Collapsed centering (user pick 2026-11-06): the summary row inherited
+   .md-typeset's 1.6 line-height, leaving the mono ink wherever each engine's
+   leading put it; line-height 1.2 makes the row hug the ink. Measured after
+   that, symmetric padding still sat ~6.5px low and 1.45rem overshot ~8px
+   high, so the closed bar interpolates to 1rem bottom padding. */
+.md-typeset .hp-filterbar:not([open]) { padding-bottom: 1rem; }
+.md-typeset .hp-filterbar > summary.hp-filter-head { position: static; display: flex; align-items: center; flex-wrap: wrap; cursor: pointer; list-style: none; padding: 0; margin: 0; background: none; border: none; border-radius: 0; font-weight: inherit; line-height: 1.2; }
+.md-typeset .hp-filterbar > summary.hp-filter-head::-webkit-details-marker { display: none; }
+.md-typeset .hp-filterbar > summary.hp-filter-head::before { content: ""; position: static; left: auto; top: auto; flex: none; width: .85rem; height: .85rem; margin: 0 .5rem 0 0; background: var(--md-default-fg-color--light); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M2 3h20l-8 9v6l-4 2v-8z'/%3E%3C/svg%3E") center/contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M2 3h20l-8 9v6l-4 2v-8z'/%3E%3C/svg%3E") center/contain no-repeat; }
+.md-typeset .hp-filterbar > summary.hp-filter-head::after { content: none; }
+.md-typeset .hp-filterbar[open] > summary.hp-filter-head::before { background: #10b981; }
 .hp-filter-lbl { font-family: "JetBrains Mono", monospace; font-size: .7rem; color: var(--md-default-fg-color--light); text-transform: uppercase; margin-right: .5rem; }
 .hp-filter-row { margin-top: .4rem; }
+/* User pick (2026-11-06): toolbar chips were touching vertically; inside the
+   filter bar only, they get real vertical padding and a row gap so wrapped
+   lines never collide. Entry-line chips keep the tight base style. */
+.hp-filter-chips a.hp-tag { padding: .2rem .5rem; margin: .18rem .1rem; }
 .hp-filter-count { font-family: "JetBrains Mono", monospace; font-size: .72rem; color: #fbbf24; }
-.hp-filter-clear { font-family: "JetBrains Mono", monospace; font-size: .72rem; color: inherit; background: none; border: 1px solid #ef444455; border-radius: 999px; padding: .12rem .6rem; cursor: pointer; margin-left: .6rem; }
+.hp-filter-clear { font-family: "JetBrains Mono", monospace; font-size: .72rem; color: inherit; background: none; border: 1px solid #ef444455; border-radius: 999px; padding: .12rem .6rem; cursor: pointer; margin-left: .6rem; transition: transform .15s ease, box-shadow .15s ease, filter .15s ease; }
+/* User pick (2026-11-06): same lift/glow/brightness hover as the tag chips,
+   tinted with the button's own red. */
+.hp-filter-clear:hover { transform: translateY(-2px); box-shadow: 0 4px 14px #ef44443d; filter: brightness(1.12); }
+.hp-filter-clear:active { transform: translateY(0); box-shadow: 0 1px 4px #ef444433; }
 .hp-filter-index { font-family: "JetBrains Mono", monospace; font-size: .72rem; margin-left: .6rem; }
 .md-content li.hp-hidden { display: none; }
 .md-content table { border-radius: 10px; overflow: auto; }
@@ -615,6 +647,7 @@ a.hp-tag:active { transform: translateY(0); box-shadow: 0 1px 4px #10b98133; }
 [data-md-color-scheme="default"] .hp-badge--broken { background: #fee2e2; color: #991b1b; border-color: #ef444455; }
 @media (max-width: 30em) { .hp-badge { font-size: .58rem; padding: .08rem .4rem; } a.hp-tag { font-size: .58rem; padding: .05rem .4rem; } }
 @media (hover: none) { .hp-badge:hover { transform: none; box-shadow: none; } a.hp-tag:hover { transform: none; box-shadow: none; } }
+@media (hover: none) { .hp-filter-clear:hover { transform: none; box-shadow: none; } }
 /* Collapsible primary sidebar: hidden below the 1220px drawer breakpoint,
    where the off-canvas drawer and its hamburger are already native.
    Zensical ships ".md-header__button:not([hidden]){display:inline-block}"
@@ -645,7 +678,10 @@ HOME_HERO = """<div class="hp-hero">
 TAGS_FILTER_JS = """/* Hackpot per-resource tags: click a chip to add/remove its tag in this
    page's live filter (AND semantics). Ctrl/Cmd/middle-click still follows the
    chip link into the whole-site Tags hub. Selection deep-links via
-   #filter=tag+tag; without JS chips stay plain links and nothing is hidden. */
+   #filter=tag+tag; without JS chips stay plain links and nothing is hidden.
+   The toolbar is a collapsed <details> by default (the summary still shows
+   the match count); a #filter= deep link opens it so the selection is
+   editable on arrival. It scrolls with the page and never floats. */
 (function () {
   "use strict";
   var content = document.querySelector(".md-content .md-typeset")
@@ -676,13 +712,16 @@ TAGS_FILTER_JS = """/* Hackpot per-resource tags: click a chip to add/remove its
   var TYPE = ["tool", "docs", "lab", "article", "video", "course", "wordlist"];
   var sel = [];
 
-  var bar = document.createElement("div");
+  var bar = document.createElement("details");
   bar.className = "hp-filterbar";
   bar.innerHTML =
-    '<span class="hp-filter-lbl">Filter</span><span class="hp-filter-chips"></span>'
-    + '<div class="hp-filter-row"><span class="hp-filter-count"></span>'
+    '<summary class="hp-filter-head">'
+    + '<span class="hp-filter-lbl">Filter</span>'
+    + '<span class="hp-filter-count"></span>'
     + '<button class="hp-filter-clear" type="button">clear \u2715</button>'
-    + '<a class="hp-filter-index" href="#">Tags index \u2192</a></div>';
+    + '<a class="hp-filter-index" href="#">Tags index \u2192</a>'
+    + '</summary>'
+    + '<div class="hp-filter-row hp-filter-chips"></div>';
   groups[0].ul.parentNode.insertBefore(bar, groups[0].ul);
 
   var firstChip = allItems[0].querySelector(".hp-tags a.hp-tag");
@@ -736,7 +775,8 @@ TAGS_FILTER_JS = """/* Hackpot per-resource tags: click a chip to add/remove its
     e.preventDefault();
     toggle(chip.getAttribute("data-tag"));
   });
-  bar.querySelector(".hp-filter-clear").addEventListener("click", function () {
+  bar.querySelector(".hp-filter-clear").addEventListener("click", function (e) {
+    e.preventDefault();  // inside <summary>: a click here must not toggle it
     sel = [];
     apply();
   });
@@ -747,6 +787,7 @@ TAGS_FILTER_JS = """/* Hackpot per-resource tags: click a chip to add/remove its
       if (counts[t] && sel.indexOf(t) < 0) sel.push(t);
     });
   }
+  if (sel.length) bar.open = true;
   apply();
 })();
 """

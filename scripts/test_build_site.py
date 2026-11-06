@@ -387,6 +387,87 @@ class NightshellTheme(unittest.TestCase):
         self.assertIn('a.hp-tag.on::after { content: " \\2713"; font-weight: 700; }', css)
         self.assertIn(".hp-filterbar", css)
 
+    def test_filterbar_does_not_float_over_content(self):
+        # User pick (2026-11-06): the toolbar scrolls with the page; it must
+        # never stay pinned on top of the list once the user scrolls past it.
+        css = (self.docs / "stylesheets" / "theme.css").read_text(encoding="utf-8")
+        rule = re.search(r"\.hp-filterbar \{([^}]*)\}", css).group(1)
+        self.assertNotIn("sticky", rule)
+        self.assertNotIn("fixed", rule)
+
+    def test_filterbar_is_collapsible_and_collapsed_by_default(self):
+        # User pick (2026-11-06): the chips hide behind a summary line by
+        # default; only a #filter= deep link (an active selection) opens it.
+        js = (self.docs / "javascripts" / "tags-filter.js").read_text(encoding="utf-8")
+        self.assertIn('document.createElement("details")', js)
+        self.assertIn('<summary class="hp-filter-head">', js)
+        self.assertRegex(js, r"if \(sel\.length\) bar\.open = true;")
+        # Nothing may pre-open the bar outside that guarded deep-link case.
+        self.assertEqual(js.count("bar.open = true"), 1)
+        self.assertNotIn("setAttribute(\"open\"", js)
+        # The clear button lives in the summary: a click there must not
+        # double as a collapse toggle.
+        self.assertRegex(js, r'\.hp-filter-clear"\)\.addEventListener\("click", function \(e\) \{\s*\n\s*e\.preventDefault\(\);')
+        css = (self.docs / "stylesheets" / "theme.css").read_text(encoding="utf-8")
+        # Zensical restyles EVERY .md-typeset details/summary as a "note"
+        # admonition (blue pencil ::before, chevron ::after, blue background,
+        # absolute positioning, focus glow). Our rules must out-specify
+        # "[dir=ltr] .md-typeset summary::before" (0,2,2) or the pencil wins.
+        self.assertIn(
+            ".md-typeset .hp-filterbar > summary.hp-filter-head::before", css)
+        self.assertIn(
+            ".md-typeset .hp-filterbar > summary.hp-filter-head::after { content: none; }", css)
+        self.assertIn(
+            ".md-typeset .hp-filterbar:focus-within { box-shadow: none; }", css)
+        self.assertIn(".md-typeset .hp-filterbar[open] > summary.hp-filter-head::before", css)
+        # User pick (2026-11-06): the marker is a funnel SVG painted through a
+        # CSS mask (font-independent), not the old triangle glyph.
+        self.assertIn("data:image/svg+xml,%3Csvg", css)
+        self.assertIn("M2 3h20l-8 9v6l-4 2v-8z", css)
+        # No triangle glyph may sneak back: neither as a proper CSS escape
+        # nor as the Python octal-escape control char that shipped as the
+        # "pencil" (chr(0o25) — the real bug behind the user report).
+        self.assertNotIn('content: "\\25B8"', css)
+        self.assertNotIn('content: "\\25BE"', css)
+        self.assertNotIn("\x15", css)
+
+    def test_filterbar_collapsed_text_is_optically_centered(self):
+        # User pick (2026-11-06): the collapsed row must sit centered in the
+        # bar on every engine: the summary hugs the ink (line-height 1.2,
+        # not the inherited 1.6 leading) and the bar padding stays symmetric.
+        css = (self.docs / "stylesheets" / "theme.css").read_text(encoding="utf-8")
+        bar = re.search(r"\.md-typeset \.hp-filterbar \{([^}]*)\}", css).group(1)
+        self.assertIn("padding: .65rem .8rem;", bar)
+        head = re.search(r"\.md-typeset \.hp-filterbar > summary\.hp-filter-head \{([^}]*)\}", css).group(1)
+        self.assertIn("line-height: 1.2;", head)
+        self.assertIn(".md-typeset .hp-filterbar:not([open]) { padding-bottom: 1rem; }", css)
+
+    def test_clear_button_hovers_like_chips(self):
+        # User pick (2026-11-06): same lift/glow/brightness hover the tag
+        # chips have, tinted red like the button's own border, plus the
+        # touch-device guard and an :active settle.
+        css = (self.docs / "stylesheets" / "theme.css").read_text(encoding="utf-8")
+        rule = re.search(r"\.hp-filter-clear \{([^}]*)\}", css).group(1)
+        self.assertIn("transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;", rule)
+        self.assertIn(
+            ".hp-filter-clear:hover { transform: translateY(-2px); "
+            "box-shadow: 0 4px 14px #ef44443d; filter: brightness(1.12); }", css)
+        self.assertIn(
+            ".hp-filter-clear:active { transform: translateY(0); "
+            "box-shadow: 0 1px 4px #ef444433; }", css)
+        self.assertIn(
+            "@media (hover: none) { .hp-filter-clear:hover { transform: none; box-shadow: none; } }", css)
+
+    def test_filter_chips_have_vertical_breathing_room(self):
+        # User pick (2026-11-06): toolbar chips were touching vertically;
+        # inside the filter bar only, they get real vertical padding and a
+        # row gap so wrapped lines never collide. Entry-line chips untouched.
+        css = (self.docs / "stylesheets" / "theme.css").read_text(encoding="utf-8")
+        self.assertIn(
+            ".hp-filter-chips a.hp-tag { padding: .2rem .5rem; margin: .18rem .1rem; }", css)
+        # Must load after the base a.hp-tag rule to win the cascade.
+        self.assertLess(css.index("a.hp-tag {"), css.index(".hp-filter-chips a.hp-tag {"))
+
     def test_tags_get_their_own_labelled_line(self):
         # User pick (2026-11-04): PoC V3 "labelled tag row" — the chips leave
         # the entry text flow: span.hp-tags becomes a block line under the
