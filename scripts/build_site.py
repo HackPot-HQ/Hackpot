@@ -45,6 +45,10 @@ NOREPLY_LOGIN_RE = re.compile(r"^\d+\+(.+)@users\.noreply\.github\.com$")
 # GitHub login grammar: alphanumerics, single internal hyphens, 1-39 chars,
 # no edge hyphens. Only logins matching this may become profile links.
 GITHUB_LOGIN_RE = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?")
+# git log pretty format whose tab-separated fields parse_recent_diff()
+# unpacks (marker, sha, author name, author email, strict-ISO date), one
+# header per commit. The two must stay in sync.
+RECENT_LOG_FMT = "tformat:%n@@C@@\t%H\t%an\t%ae\t%aI"
 
 
 def load_meta():
@@ -335,9 +339,8 @@ def uploader_credit(login):
 
 def _added_entry(raw):
     """Parse one diffed '+' line as a resource entry; None if not one.
-    Relative links are category/leaf navigation, never uploads."""
-    if not LIST_ITEM_RE.match(raw):
-        return None
+    ENTRY_HREF_RE already pins the list-item prefix; relative links are
+    category/leaf navigation, never uploads."""
     m = ENTRY_HREF_RE.match(raw)
     if not m:
         return None
@@ -351,7 +354,7 @@ def _added_entry(raw):
 
 def parse_recent_diff(log_text):
     """First-addition record per (README path, entry name) from a
-    `git log --no-merges -p -U0 --format=<@@C@@ marker>` stream.
+    `git log --no-merges -p -U0 --format=RECENT_LOG_FMT` stream.
 
     The stream is walked newest-first and records overwrite, so the OLDEST
     commit that added the line owns the upload: later rewordings never bump
@@ -367,10 +370,14 @@ def parse_recent_diff(log_text):
     for line in log_text.replace("@@C@@", "\n@@C@@").split("\n"):
         if line.startswith("@@C@@"):
             parts = line.split("\t")
-            commit = None if len(parts) != 5 else {
-                "iso": parts[4], "date": parts[4][:10],
-                "login": github_login(parts[3], parts[2]),
-            }
+            if len(parts) != 5:
+                commit = None
+            else:
+                # Field order follows RECENT_LOG_FMT (readable names beat
+                # tab indices if the format ever shifts).
+                _marker, _sha, author, email, iso = parts
+                commit = {"iso": iso, "date": iso[:10],
+                          "login": github_login(email=email, name=author)}
             path = None
         elif line.startswith("+++ b/"):
             path = line[len("+++ b/"):]
@@ -387,38 +394,47 @@ def parse_recent_diff(log_text):
                   key=lambda a: (a["iso"], a["name"].casefold()), reverse=True)
 
 
-def _is_shallow_repository():
+def _is_shallow_repository(cwd=None):
     try:
         proc = subprocess.run(
             ["git", "rev-parse", "--is-shallow-repository"],
-            cwd=ROOT, capture_output=True, text=True, timeout=10)
+            cwd=str(cwd if cwd is not None else ROOT),
+            capture_output=True, text=True, timeout=10)
     except (OSError, subprocess.SubprocessError):
         return False
     return proc.stdout.strip() == "true"
 
 
-def recent_additions():
+def recent_additions(cwd=None):
     """Upload history from git, newest first. Returns [] when git is
     unavailable OR the checkout is shallow: a depth-N clone diffs its
     boundary commit against the empty tree, so every line would be
     misattributed to that one author instead of degrading to a notice.
     CI must check out with fetch-depth: 0 (deploy/site-check workflows).
     Entries renamed or removed since their upload are dropped later, at the
-    join with the pages actually generated."""
-    if _is_shallow_repository():
+    join with the pages actually generated. ``cwd`` overrides the repo for
+    tests; production calls rely on the module ROOT."""
+    if _is_shallow_repository(cwd):
         return []
-    fmt = "tformat:%n@@C@@\t%H\t%an\t%ae\t%aI"
+    repo = str(cwd if cwd is not None else ROOT)
     try:
         proc = subprocess.run(
             ["git", "-c", "core.quotepath=false", "log", "--no-merges",
-             "-p", "-U0", f"--format={fmt}", "--", "*README.md"],
-            cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+             "-p", "-U0", f"--format={RECENT_LOG_FMT}", "--", "*README.md"],
+            cwd=repo, capture_output=True, text=True, encoding="utf-8",
             errors="replace", timeout=120)
     except (OSError, subprocess.SubprocessError):
         return []
     if proc.returncode != 0:
         return []
     return parse_recent_diff(proc.stdout)
+
+
+def site_doc(readme_path):
+    """The single spelling of the README → generated-page mapping: git
+    paths and docs paths meet here, so select_recent and any fixture share
+    one definition instead of slicing by hand."""
+    return readme_path[: -len("README.md")] + "index.md"
 
 
 def select_recent(additions, locations, limit=RECENT_LIMIT):
@@ -429,7 +445,7 @@ def select_recent(additions, locations, limit=RECENT_LIMIT):
     page."""
     rows = []
     for a in additions:
-        doc = a["path"][: -len("README.md")] + "index.md"
+        doc = site_doc(a["path"])
         loc = locations.get((doc, a["name"].casefold()))
         if loc is None:
             continue
@@ -480,18 +496,17 @@ def convert(source, dest, meta, repo_url, tagged=False, sink=None,
     body = transform(text, meta, repo_url, tagged=tagged,
                      tags_href=tags_href, sink=page_hits)
     dest.write_text(body, encoding="utf-8")
-    if sink is not None:
-        doc = dest.relative_to(DOCS).as_posix()
-        for name, entry_anchor, tags, desc in page_hits:
+    doc = dest.relative_to(DOCS).as_posix()
+    for name, entry_anchor, tags, desc in page_hits:
+        if sink is not None:
             for tag, _is_type in tags:
                 sink.setdefault(tag, []).append((name, doc, entry_anchor, desc))
-    if entries is not None:
-        # (doc, lowercased name) -> (anchor, tags): the live join key for
-        # the Recent uploads view, fed by the anchors transform just minted.
-        doc = dest.relative_to(DOCS).as_posix()
-        for name, entry_anchor, tags, _desc in page_hits:
+        if entries is not None:
+            # (doc, lowercased name) -> (anchor, tags): the live join key
+            # for the Recent uploads view, fed by the anchors that
+            # transform just minted.
             entries.setdefault((doc, name.casefold()), (entry_anchor, tags))
-    return dest.relative_to(DOCS).as_posix()
+    return doc
 
 
 def yaml_quote(value):

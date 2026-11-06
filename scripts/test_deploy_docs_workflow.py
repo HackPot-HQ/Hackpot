@@ -1,4 +1,7 @@
-"""Contract tests for the Pages-deployment reaper in deploy-docs.yml.
+"""Contract tests for the site-build workflows: the Pages-deployment reaper
+in deploy-docs.yml, and the full-history checkout that BOTH deploy-docs.yml
+and site-check.yml must give the build (docs/recent.md is compiled from git
+history — a default-depth checkout ships an empty or miscredited page).
 
 Facts: github/rest-api-description (api.github.com.json) defines only
 POST /pages/deployments, GET /pages/deployments/{id}, POST .../cancel;
