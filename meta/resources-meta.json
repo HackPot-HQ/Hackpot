@@ -1,69 +1,139 @@
 {
-  "checked_at": "2026-10-30T11:22:01Z",
+  "checked_at": "2026-11-06T06:54:17Z",
   "rate_limited": false,
   "repos": {
+    "Fortiphyd/GRFICSv3": {
+      "default_branch": "main",
+      "last_update": "2026-10-20",
+      "not_found": false,
+      "pushed_at": "2026-10-20T21:00:09Z",
+      "stars": 288
+    },
     "JoasASantos/Offensive-Security-AI-Models": {
       "default_branch": "main",
       "last_update": "2026-09-28",
       "not_found": false,
       "pushed_at": "2026-09-28T14:34:47Z",
-      "stars": 757
+      "stars": 796
     },
     "SnaffCon/Snaffler": {
       "default_branch": "master",
       "last_update": "2026-02-27",
       "not_found": false,
       "pushed_at": "2026-02-27T00:57:16Z",
-      "stars": 2972
+      "stars": 2982
+    },
+    "bee-san/Ciphey": {
+      "default_branch": "master",
+      "last_update": "2026-11-04",
+      "not_found": false,
+      "pushed_at": "2026-11-05T01:05:56Z",
+      "stars": 21748
     },
     "caido/caido": {
       "default_branch": "main",
-      "last_update": "2026-05-29",
+      "last_update": "2026-10-30",
       "not_found": false,
-      "pushed_at": "2026-10-26T12:28:01Z",
-      "stars": 2714
+      "pushed_at": "2026-10-30T16:04:31Z",
+      "stars": 2724
     },
     "claration/impactor": {
       "default_branch": "main",
       "last_update": "2026-10-24",
       "not_found": false,
       "pushed_at": "2026-10-24T18:34:39Z",
-      "stars": 3685
+      "stars": 3742
     },
     "collin80/SavvyCAN": {
       "default_branch": "QT6WIP",
-      "last_update": "2026-10-28",
+      "last_update": "2026-11-04",
       "not_found": false,
-      "pushed_at": "2026-10-29T00:02:54Z",
-      "stars": 1900
+      "pushed_at": "2026-11-04T01:05:54Z",
+      "stars": 1916
     },
     "d3vilbug/HackBar": {
       "default_branch": "master",
       "last_update": "2021-04-15",
       "not_found": false,
       "pushed_at": "2021-04-15T11:26:55Z",
-      "stars": 1637
+      "stars": 1632
     },
     "davtur19/DotGit": {
       "default_branch": "master",
       "last_update": "2026-10-20",
       "not_found": false,
       "pushed_at": "2026-10-20T23:52:16Z",
-      "stars": 482
+      "stars": 483
+    },
+    "dronesploit/dronesploit": {
+      "default_branch": "main",
+      "last_update": "2024-11-23",
+      "not_found": false,
+      "pushed_at": "2024-11-23T13:13:00Z",
+      "stars": 2201
+    },
+    "huntergregal/mimipenguin": {
+      "default_branch": "master",
+      "last_update": "2025-09-05",
+      "not_found": false,
+      "pushed_at": "2025-09-05T16:43:43Z",
+      "stars": 4185
     },
     "lycheeverse/lychee": {
       "default_branch": "master",
-      "last_update": "2026-10-26",
+      "last_update": "2026-11-02",
       "not_found": false,
-      "pushed_at": "2026-10-26T15:26:21Z",
-      "stars": 4066
+      "pushed_at": "2026-11-02T18:48:05Z",
+      "stars": 4098
+    },
+    "nicholasaleks/Damn-Vulnerable-Drone": {
+      "default_branch": "master",
+      "last_update": "2026-09-29",
+      "not_found": false,
+      "pushed_at": "2026-09-29T00:13:22Z",
+      "stars": 862
+    },
+    "nirajkharel/AD-Pentesting-Notes": {
+      "default_branch": "main",
+      "last_update": "2023-08-25",
+      "not_found": false,
+      "pushed_at": "2023-08-25T05:36:45Z",
+      "stars": 331
     },
     "nmatt0/mithril": {
       "default_branch": "master",
-      "last_update": "2026-10-29",
+      "last_update": "2026-10-30",
       "not_found": false,
-      "pushed_at": "2026-10-29T23:05:05Z",
-      "stars": 382
+      "pushed_at": "2026-10-30T19:30:18Z",
+      "stars": 392
+    },
+    "securing/gattacker": {
+      "default_branch": "master",
+      "last_update": "2018-10-03",
+      "not_found": false,
+      "pushed_at": "2022-01-31T05:53:09Z",
+      "stars": 855
+    },
+    "sfl0r3nz05/ICSsVirtualForCiberSec": {
+      "default_branch": "main",
+      "last_update": "2023-06-21",
+      "not_found": false,
+      "pushed_at": "2023-06-28T10:58:17Z",
+      "stars": 31
+    },
+    "sfl0r3nz05/OT-NWbasedOnGNS3": {
+      "default_branch": "master",
+      "last_update": "2023-06-10",
+      "not_found": false,
+      "pushed_at": "2023-06-10T14:45:30Z",
+      "stars": 24
+    },
+    "zakharb/labshock": {
+      "default_branch": "main",
+      "last_update": "2026-05-28",
+      "not_found": false,
+      "pushed_at": "2026-05-28T16:39:14Z",
+      "stars": 803
     }
   }
 }
