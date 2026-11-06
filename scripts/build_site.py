@@ -267,9 +267,13 @@ def entry_tags(line):
 
 def tag_chips(tags, tags_href):
     """Inline HTML: one clickable chip per tag, linking to the tag's section
-    in the generated Tags hub."""
+    in the generated Tags hub.
+
+    Display order: type tags first, then every tag alphabetically
+    (casefolded); the source token order never leaks to the site."""
     chips = []
-    for tag, is_type in tags:
+    ordered = sorted(tags, key=lambda t: (not t[1], t[0].casefold()))
+    for tag, is_type in ordered:
         cls = "hp-tag hp-tag--type" if is_type else "hp-tag"
         escaped = htmlmod.escape(tag, quote=True)
         href = f"{tags_href}#t-{slugify(tag)}"

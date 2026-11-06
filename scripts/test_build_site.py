@@ -103,6 +103,17 @@ class EntryTags(unittest.TestCase):
             '<a class="hp-tag" data-tag="linux"'
             ' href="../../tags.md#t-linux">linux</a></span>\n')
 
+    def test_tag_chips_type_first_then_alphabetical(self):
+        # Website requirement: chips show every tag of the resource sorted
+        # alphabetically, with the type tag always first regardless of the
+        # order the tokens appear in the source line.
+        out = build_site.transform(
+            "- [X](https://x.test) — does things. `zebra` `linux` "
+            "`type:tool` `Apple`\n",
+            {}, None, tagged=True, tags_href="../../tags.md")
+        order = [m.group(1) for m in re.finditer(r'data-tag="([^"]+)"', out)]
+        self.assertEqual(order, ["tool", "Apple", "linux", "zebra"])
+
     def test_untagged_transform_unchanged_old_contract(self):
         # S5: home/contributing keep literal tokens as source documentation.
         src = "- [X](https://x.test) — does things. `type:tool` `linux`\n"
