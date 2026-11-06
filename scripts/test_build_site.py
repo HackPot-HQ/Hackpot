@@ -1,11 +1,14 @@
 """Regression tests for scripts/build_site.py."""
 
+import os
 import pathlib
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
+from datetime import date
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import build_site  # noqa: E402
@@ -613,6 +616,259 @@ class TagPerResource(unittest.TestCase):
         self.assertIn(
             "- [Name](https://example.com) — what it does. `type:tool` `linux`", out)
         self.assertIn('- <a id="e-x"></a>[X](https://x.test) — real entry.', out)
+
+
+class RecentUploads(unittest.TestCase):
+    # S1/S2 (odd/tasks/recent-uploads-view.md): a generated page compiling
+    # "almost the last 50" uploaded resources — tool, description, uploader —
+    # newest first, compiled from git history at site-generation time.
+
+    DIFF = "\n".join([
+        "@@C@@\tsha1\tRenovator\t1+renovator@users.noreply.github.com\t2026-11-05T10:00:00+01:00",
+        "diff --git a/01_Recon_and_OSINT/OSINT/README.md b/01_Recon_and_OSINT/OSINT/README.md",
+        "--- a/01_Recon_and_OSINT/OSINT/README.md",
+        "+++ b/01_Recon_and_OSINT/OSINT/README.md",
+        "@@ -5,0 +6,1 @@",
+        "+- [9Ghz](https://9ghz.com/) — Retouched wording. `type:tool` `osint`",
+        "+- [Overview bullet](../01_Recon_and_OSINT/README.md) — nav, not an upload. `x`",
+        "@@C@@\tsha2\tFirst\t42+first@users.noreply.github.com\t2026-11-01T09:00:00+01:00",
+        "diff --git a/01_Recon_and_OSINT/OSINT/README.md b/01_Recon_and_OSINT/OSINT/README.md",
+        "--- a/01_Recon_and_OSINT/OSINT/README.md",
+        "+++ b/01_Recon_and_OSINT/OSINT/README.md",
+        "@@ -5,0 +6,1 @@",
+        "+- [9Ghz](https://9ghz.com/) — Check if you are in any data breach. `type:tool` `osint`",
+        "+- [HIBP](https://haveibeenpwned.com/) — Check if an email is pwned. `type:tool` `breach`",
+        "@@C@@\tsha3\tDocwriter\t3+docs@users.noreply.github.com\t2026-10-20T09:00:00+01:00",
+        "diff --git a/CONTRIBUTING.md b/CONTRIBUTING.md",
+        "--- a/CONTRIBUTING.md",
+        "+++ b/CONTRIBUTING.md",
+        "@@ -1,0 +2,1 @@",
+        "+- [Example](https://example.com) — outside the categories. `x`",
+        "",
+    ])
+
+    def _add(self, name, date):
+        return {"name": name, "url": "https://x.test/" + name,
+                "desc": "does things.", "tags": [("tool", True)],
+                "path": "01_Recon_and_OSINT/OSINT/README.md",
+                "date": date, "iso": date + "T12:00:00+01:00", "login": "someone"}
+
+    def test_parse_recent_diff_oldest_addition_wins_and_noise_is_dropped(self):
+        adds = build_site.parse_recent_diff(self.DIFF)
+        self.assertEqual({a["name"] for a in adds}, {"9Ghz", "HIBP"})
+        nine = next(a for a in adds if a["name"] == "9Ghz")
+        # The 2026-11-05 edit re-added the line but must not bump the upload:
+        # date, wording and uploader all come from the FIRST addition.
+        self.assertEqual(nine["date"], "2026-11-01")
+        self.assertEqual(nine["desc"], "Check if you are in any data breach.")
+        self.assertEqual(nine["login"], "first")
+        self.assertEqual(nine["tags"], [("tool", True), ("osint", False)])
+
+    def test_github_login_prefers_the_noreply_login(self):
+        self.assertEqual(build_site.github_login(
+            "46595866+J0nan@users.noreply.github.com", "Jonan"), "J0nan")
+        self.assertEqual(build_site.github_login("mail@example.com", "Jonan"), "mail")
+        self.assertEqual(build_site.github_login("", "Jonan"), "Jonan")
+
+    def test_select_recent_keeps_only_live_entries_and_uses_page_anchor(self):
+        adds = [self._add("Live", "2026-11-05"), self._add("Gone", "2026-11-04")]
+        locs = {("01_Recon_and_OSINT/OSINT/index.md", "live"): "e-live"}
+        rows = build_site.select_recent(adds, locs)
+        self.assertEqual([r["name"] for r in rows], ["Live"])
+        self.assertEqual(rows[0]["anchor"], "e-live")
+
+    def test_select_recent_never_splits_a_same_day_batch_at_the_cap(self):
+        adds = ([self._add(f"new{i:02d}", "2026-11-05") for i in range(48)]
+                + [self._add(f"day{i:02d}", "2026-11-04") for i in range(4)]
+                + [self._add(f"old{i:02d}", "2026-11-03") for i in range(3)])
+        locs = {(build_site.site_doc(a["path"]), a["name"].casefold()):
+                "e-" + a["name"].casefold() for a in adds}
+        rows = build_site.select_recent(adds, locs, limit=build_site.RECENT_LIMIT)
+        self.assertEqual(len(rows), 52)          # whole 2026-11-04 batch survives
+        self.assertEqual(rows[-1]["date"], "2026-11-04")
+        self.assertNotIn("2026-11-03", {r["date"] for r in rows})
+
+    def test_select_recent_hard_stops_at_cap_plus_tie_bonus(self):
+        # A single boundary day bigger than the cap must not blow the page up:
+        # RECENT_LIMIT + at most RECENT_TIE_BONUS tie rows.
+        adds = ([self._add(f"t{i:03d}", "2026-11-05") for i in range(60)]
+                + [self._add(f"e{i:03d}", "2026-11-04") for i in range(5)])
+        locs = {(build_site.site_doc(a["path"]), a["name"].casefold()):
+                "e-" + a["name"].casefold() for a in adds}
+        rows = build_site.select_recent(adds, locs, limit=build_site.RECENT_LIMIT)
+        self.assertEqual(len(rows),
+                         build_site.RECENT_LIMIT + build_site.RECENT_TIE_BONUS)
+
+    def test_render_recent_row_shows_tool_description_and_uploader(self):
+        # Chosen design (user pick 2026-11-06, POC V2): entry line, then the
+        # uploader and date on their own credit line — avatar + @login +
+        # human age + exact DD-MM-YYYY. No tag chips, so tags-filter.js
+        # can never activate on this page (S4).
+        rows = [
+            {"name": "9Ghz", "doc": "01_Recon_and_OSINT/OSINT/index.md",
+             "anchor": "e-9ghz", "desc": "Check if you are in any data breach.",
+             "tags": [("tool", True), ("osint", False)], "login": "J0nan",
+             "date": "2026-11-05", "iso": "2026-11-05T10:00:00+01:00"},
+            {"name": "OldTool", "doc": "01_Recon_and_OSINT/OSINT/index.md",
+             "anchor": "e-oldtool", "desc": "Was here before.", "tags": [],
+             "login": "Vallejos115", "date": "2026-10-30",
+             "iso": "2026-10-30T10:00:00+01:00"},
+        ]
+        ref = date(2026, 11, 10)
+        page = build_site.render_recent(rows, ref=ref)
+        self.assertTrue(page.startswith("# Recent uploads"))
+        self.assertIn("- [9Ghz](01_Recon_and_OSINT/OSINT/index.md#e-9ghz) — "
+                      "Check if you are in any data breach.", page)
+        # own-line credit, human age, site date convention
+        line = next(l for l in page.split("\n") if l.startswith("- [9Ghz]"))
+        self.assertIn('<span class="hp-credit">', line)
+        self.assertIn('src="https://github.com/J0nan.png?size=48"', line)
+        self.assertIn("[@J0nan](https://github.com/J0nan)", line)
+        self.assertIn("5 days ago (05-11-2026)", line)
+        self.assertLess(page.index("[9Ghz]"), page.index("[OldTool]"),
+                        "newest first")
+        # S4: no chips anywhere on the page (data-tag anchors are what
+        # tags-filter.js hunts for; hp-tag-sub is the intro paragraph).
+        self.assertNotIn("hp-tags", page)
+        self.assertNotIn('data-tag="', page)
+
+    def test_upload_age_human_boundaries(self):
+        ref = date(2026, 11, 10)
+        cases = {"2026-11-10": "today", "2026-11-09": "yesterday",
+                 "2026-10-28": "13 days ago", "2026-10-27": "2 weeks ago",
+                 "2026-09-12": "8 weeks ago", "2026-09-11": "2 months ago",
+                 "2025-09-16": "14 months ago"}
+        for iso, want in cases.items():
+            self.assertEqual(build_site.upload_age(iso, ref), want, iso)
+
+    def test_render_recent_without_history_degrades_to_notice(self):
+        page = build_site.render_recent([])
+        self.assertTrue(page.startswith("# Recent uploads"))
+        self.assertIn("history", page.lower())
+
+    def test_credit_avatar_and_link_only_for_grammar_logins(self):
+        # Risk finding R1 stays gated after the V2 redesign: avatar and
+        # profile link may only be built from GitHub-grammar logins;
+        # anything else degrades to harmless stripped text, no img, no a.
+        good = {"name": "T", "doc": "d/index.md", "anchor": "e-t",
+                "desc": "", "tags": [], "date": "2026-11-05",
+                "iso": "2026-11-05T10:00:00+01:00"}
+        ref = date(2026, 11, 12)
+        page = build_site.render_recent([dict(good, login="a-b")], ref=ref)
+        self.assertIn("https://github.com/a-b.png?size=48", page)
+        self.assertIn("[@a-b](https://github.com/a-b)", page)
+        evil = build_site.render_recent(
+            [dict(good, login="ev[il](javascript:alert(1))x")], ref=ref)
+        self.assertNotIn("javascript:", evil)
+        self.assertNotIn("<img", evil)
+        self.assertNotIn("](https", evil.split("</p>", 1)[1])
+        self.assertIn("@eviljavascriptalert1x", evil)
+        forty = build_site.render_recent([dict(good, login="a" * 40)], ref=ref)
+        self.assertNotIn("<img", forty)
+        self.assertIn("@" + "a" * 39, forty)
+        blank = build_site.render_recent([dict(good, login="")], ref=ref)
+        self.assertIn("@unknown", blank)
+        self.assertNotIn("<img", blank)
+
+    def test_shallow_checkout_yields_no_additions_not_misattribution(self):
+        # Verifier advisory 1 (2026-11-05): in a depth-1 clone `git log -p`
+        # diffs the boundary commit against the EMPTY tree, so every README
+        # line parses as added by that one commit — wrong uploader and date
+        # for every row, silently. The builder must refuse instead (the page
+        # then degrades to the notice).
+        git = shutil.which("git")
+        if not git:
+            self.skipTest("git not available")
+        root = pathlib.Path(tempfile.mkdtemp(prefix="hackpot_shallow_"))
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+        origin, clone = root / "origin", root / "clone"
+        env = {"GIT_AUTHOR_NAME": "First",
+               "GIT_AUTHOR_EMAIL": "1+first@users.noreply.github.com",
+               "GIT_COMMITTER_NAME": "First",
+               "GIT_COMMITTER_EMAIL": "1+first@users.noreply.github.com"}
+
+        def run(args, cwd, extra_env=None):
+            e = dict(os.environ, **env)
+            e.update(extra_env or {})
+            r = subprocess.run([git, *args], cwd=str(cwd), capture_output=True,
+                               text=True, env=e)
+            self.assertEqual(r.returncode, 0, r.stderr)
+        (origin / "01_Cat" / "Leaf").mkdir(parents=True)
+        (origin / "01_Cat" / "Leaf" / "README.md").write_text(
+            "# Leaf\n- [9Ghz](https://9ghz.com/) — First wording. `type:tool`\n",
+            encoding="utf-8")
+        run(["init", "-q"], origin)
+        run(["add", "."], origin)
+        run(["commit", "-q", "-m", "seed"], origin)
+        (origin / "01_Cat" / "Leaf" / "README.md").write_text(
+            "# Leaf\n- [9Ghz](https://9ghz.com/) — Reworded. `type:tool`\n",
+            encoding="utf-8")
+        run(["commit", "-q", "-am", "reword"], origin,
+            {"GIT_AUTHOR_NAME": "Renovator",
+             "GIT_COMMITTER_NAME": "Renovator"})
+        # --depth is ignored in local-PATH clones; file:// forces a real
+        # shallow fetch (git's own warning).
+        url = origin.as_uri()
+        run(["clone", "-q", "--depth", "1", url, str(clone)], root)
+        self.assertEqual(build_site.recent_additions(cwd=clone), [])
+
+
+class RecentUploadsGenerated(unittest.TestCase):
+    # End-to-end over the real repo: the page is generated by build(), the
+    # nav places it before Tags, and its deep links resolve.
+    # Floor, not a pinned count: the POC measured 100% history coverage of
+    # the live catalog (Log L3), so a build over this repo that finds far
+    # fewer rows means the pipeline broke, not that the catalog shrank.
+    MIN_LIVE_UPLOADS = 20
+
+    @classmethod
+    def setUpClass(cls):
+        cls.docs = cached_build()
+        cls.yml = (cls.docs.parent / "mkdocs.yml").read_text(encoding="utf-8")
+
+    def test_recent_page_generated_before_tags_in_nav(self):
+        self.assertIn('"Recent uploads": "recent.md"', self.yml)
+        self.assertLess(self.yml.index('"Recent uploads": "recent.md"'),
+                        self.yml.index('"Tags": "tags.md"'))
+        page = (self.docs / "recent.md").read_text(encoding="utf-8")
+        self.assertTrue(page.startswith("# Recent uploads"))
+
+    def test_recent_rows_deep_link_existing_entry_anchors_and_uploaders(self):
+        page = (self.docs / "recent.md").read_text(encoding="utf-8")
+        links = re.findall(r"^- \[[^\]]+\]\(([^)]+)\)", page, re.M)
+        if not links:
+            self.skipTest("no git history available for this build")
+        self.assertGreaterEqual(len(links), self.MIN_LIVE_UPLOADS)
+        for target in links:
+            path, frag = target.split("#", 1)
+            text = (self.docs / path).read_text(encoding="utf-8")
+            self.assertIn(f'<a id="{frag}"></a>', text, f"{target} dangling")
+        # Chosen credit line (POC V2): avatar, profile link, human age and
+        # the exact date in the site's DD-MM-YYYY convention.
+        self.assertIn('<span class="hp-credit">', page)
+        self.assertRegex(page, r"src=\"https://github\.com/[^\"]+\.png\?size=48\"")
+        self.assertRegex(page, r"\[@[^\]]+\]\(https://github\.com/")
+        self.assertRegex(page, r"\(\d{2}-\d{2}-\d{4}\)")
+        # S4: the view carries no chips, so the filter toolbar never mounts.
+        self.assertNotIn("hp-tags", page)
+        self.assertLessEqual(len(links),
+                             build_site.RECENT_LIMIT + build_site.RECENT_TIE_BONUS)
+
+    def test_recent_credit_css_ships(self):
+        # The own-line credit (S5) needs its classes in the shipped theme.
+        css = (self.docs / "stylesheets" / "theme.css").read_text(encoding="utf-8")
+        self.assertIn(".hp-credit { display: block;", css)
+        self.assertIn(".hp-avatar {", css)
+        self.assertIn('[data-md-color-scheme="default"] .hp-credit', css)
+        # Verifier regression (2026-11-05): chronological order is the whole
+        # point of the view; pin it on the real generated page. Dates are
+        # rendered DD-MM-YYYY inside the credit line.
+        page = (self.docs / "recent.md").read_text(encoding="utf-8")
+        stamp = re.findall(r"\((\d{2})-(\d{2})-(\d{4})\)", page)
+        iso = [f"{y}-{m}-{d}" for d, m, y in stamp]
+        if not iso:
+            self.skipTest("no git history available for this build")
+        self.assertEqual(iso, sorted(iso, reverse=True))
 
 
 if __name__ == "__main__":

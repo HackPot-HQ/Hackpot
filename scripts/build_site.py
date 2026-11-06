@@ -4,8 +4,11 @@ The READMEs are the single source of truth: this script mirrors them into
 docs/ (git-ignored), rewrites relative links for Zensical, injects star and
 freshness badges for GitHub repositories (from meta/resources-meta.json),
 renders each entry's backtick tags as per-resource chips that filter the page
-and link into a generated tag->resources hub (tags.md), and writes the site
-configuration. Run by .github/workflows/deploy-docs.yml.
+and link into a generated tag->resources hub (tags.md), compiles the Recent
+uploads hub (recent.md) — the newest resources with an own-line avatar credit
+of uploader and date, taken from git first-addition history and shown
+without chips — and writes the site configuration. Run by
+.github/workflows/deploy-docs.yml.
 """
 
 import argparse
@@ -34,6 +37,24 @@ TAG_TOKEN_RE = re.compile(r"`([^`\n]+)`")
 TAG_TYPE_PREFIX = "type:"
 FORMAT_COMMENT_RE = re.compile(r"^\s*<!--\s*Format:")
 CATEGORY_DIR_RE = re.compile(r"^\d{2}_")
+
+# Recent uploads view (docs/recent.md): compiled from git history at
+# site-generation time — the repo stores nothing; docs/ is generated+ignored.
+RECENT_LIMIT = 50
+RECENT_TIE_BONUS = 10          # a boundary day may add at most this many rows
+RECENT_README_RE = re.compile(r"^\d{2}_[^/]+(?:/[^/]+)?/README\.md$")
+ENTRY_HREF_RE = re.compile(r"^\s*[-*] \[([^\]]+)\]\(([^)]+)\)")
+NOREPLY_LOGIN_RE = re.compile(r"^\d+\+(.+)@users\.noreply\.github\.com$")
+# GitHub login grammar: alphanumerics, single internal hyphens, 1-39 chars,
+# no edge hyphens. Only logins matching this may become profile links.
+GITHUB_LOGIN_RE = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?")
+# Display charset for logins outside the grammar: markdown- and
+# HTML-inert characters only.
+CREDIT_SAFE_TEXT_RE = re.compile(r"[^A-Za-z0-9._+-]")
+# git log pretty format whose tab-separated fields parse_recent_diff()
+# unpacks (marker, sha, author name, author email, strict-ISO date), one
+# header per commit. The two must stay in sync.
+RECENT_LOG_FMT = "tformat:%n@@C@@\t%H\t%an\t%ae\t%aI"
 
 
 def load_meta():
@@ -300,7 +321,203 @@ def render_tags(index):
     return "\n".join(lines)
 
 
-def convert(source, dest, meta, repo_url, tagged=False, sink=None):
+def github_login(email, name):
+    """Display login for a commit author: noreply emails carry it as the
+    id+login part; otherwise fall back to the email local part, then name."""
+    m = NOREPLY_LOGIN_RE.match(email or "")
+    if m:
+        return m.group(1)
+    if email and not email.startswith("noreply@"):
+        return email.split("@")[0]
+    return name
+
+
+def upload_age(when, ref=None):
+    """Human age of an upload against ref (default today, at build time):
+    today / yesterday / N days ago (<14d) / N weeks ago (<60d) /
+    N months ago (30-day months)."""
+    days = (ref or date.today()).toordinal() - date.fromisoformat(when).toordinal()
+    if days <= 0:
+        return "today"
+    if days == 1:
+        return "yesterday"
+    if days < 14:
+        return f"{days} days ago"
+    if days < 60:
+        return f"{days // 7} weeks ago"
+    return f"{days // 30} months ago"
+
+
+def uploader_credit(login, when, ref=None):
+    """Own-line credit (user pick 2026-11-06, POC V2): avatar + linked
+    login, human age and the exact DD-MM-YYYY stamp. Risk finding R1 stays
+    gated: the login is commit-author metadata no reviewed diff constrains,
+    so the avatar <img> and the profile link are built ONLY for
+    GitHub-grammar logins; anything else degrades to stripped plain text
+    with no markup at all."""
+    if GITHUB_LOGIN_RE.fullmatch(login):
+        who = (f'<img class="hp-avatar" '
+               f'src="https://github.com/{login}.png?size=48" alt="" '
+               f'title="{login}">[@{login}](https://github.com/{login})')
+    else:
+        # Same credit purpose, zero markup: stripped to the inert display
+        # charset, capped at the grammar's own 39-char ceiling.
+        safe = CREDIT_SAFE_TEXT_RE.sub("", login)[:39]
+        who = "@" + (safe or "unknown")
+    return f"{who} · {upload_age(when, ref)} ({format_date(when)})"
+
+
+def _added_entry(raw):
+    """Parse one diffed '+' line as a resource entry; None if not one.
+    ENTRY_HREF_RE already pins the list-item prefix; relative links are
+    category/leaf navigation, never uploads."""
+    m = ENTRY_HREF_RE.match(raw)
+    if not m:
+        return None
+    name, url = m.group(1), m.group(2)
+    if not url.startswith(("http://", "https://")):
+        return None
+    return {"name": name, "url": url,
+            "desc": entry_description(strip_trailing_tags(raw)),
+            "tags": entry_tags(raw)}
+
+
+def parse_recent_diff(log_text):
+    """First-addition record per (README path, entry name) from a
+    `git log --no-merges -p -U0 --format=RECENT_LOG_FMT` stream.
+
+    The stream is walked newest-first and records overwrite, so the OLDEST
+    commit that added the line owns the upload: later rewordings never bump
+    a resource back into "recent". Doc-example bullets inside ``` fences
+    can't be fence-tracked through a bare '+' line, but they reference fake
+    URLs that are absent from the generated pages, so select_recent drops
+    them at the join. Newest first."""
+    commit = None
+    path = None
+    additions = {}
+    # Never let a commit header ride on the previous line (tformat does not
+    # guarantee a leading newline for every header).
+    for line in log_text.replace("@@C@@", "\n@@C@@").split("\n"):
+        if line.startswith("@@C@@"):
+            parts = line.split("\t")
+            if len(parts) != 5:
+                commit = None
+            else:
+                # Field order follows RECENT_LOG_FMT (readable names beat
+                # tab indices if the format ever shifts).
+                _marker, _sha, author, email, iso = parts
+                commit = {"iso": iso, "date": iso[:10],
+                          "login": github_login(email=email, name=author)}
+            path = None
+        elif line.startswith("+++ b/"):
+            path = line[len("+++ b/"):]
+            if not RECENT_README_RE.match(path):
+                path = None
+        elif path and commit and line.startswith("+") and not line.startswith("+++"):
+            parsed = _added_entry(line[1:])
+            if parsed:
+                additions[(path, parsed["name"].casefold())] = {
+                    **parsed, "path": path,
+                    "date": commit["date"], "iso": commit["iso"],
+                    "login": commit["login"]}
+    return sorted(additions.values(),
+                  key=lambda a: (a["iso"], a["name"].casefold()), reverse=True)
+
+
+def _is_shallow_repository(cwd=None):
+    try:
+        proc = subprocess.run(
+            ["git", "rev-parse", "--is-shallow-repository"],
+            cwd=str(cwd if cwd is not None else ROOT),
+            capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return proc.stdout.strip() == "true"
+
+
+def recent_additions(cwd=None):
+    """Upload history from git, newest first. Returns [] when git is
+    unavailable OR the checkout is shallow: a depth-N clone diffs its
+    boundary commit against the empty tree, so every line would be
+    misattributed to that one author instead of degrading to a notice.
+    CI must check out with fetch-depth: 0 (deploy/site-check workflows).
+    Entries renamed or removed since their upload are dropped later, at the
+    join with the pages actually generated. ``cwd`` overrides the repo for
+    tests; production calls rely on the module ROOT."""
+    if _is_shallow_repository(cwd):
+        return []
+    repo = str(cwd if cwd is not None else ROOT)
+    try:
+        proc = subprocess.run(
+            ["git", "-c", "core.quotepath=false", "log", "--no-merges",
+             "-p", "-U0", f"--format={RECENT_LOG_FMT}", "--", "*README.md"],
+            cwd=repo, capture_output=True, text=True, encoding="utf-8",
+            errors="replace", timeout=120)
+    except (OSError, subprocess.SubprocessError):
+        return []
+    if proc.returncode != 0:
+        return []
+    return parse_recent_diff(proc.stdout)
+
+
+def site_doc(readme_path):
+    """The single spelling of the README → generated-page mapping: git
+    paths and docs paths meet here, so select_recent and any fixture share
+    one definition instead of slicing by hand."""
+    return readme_path[: -len("README.md")] + "index.md"
+
+
+def select_recent(additions, locations, limit=RECENT_LIMIT):
+    """Join history with the generated pages ((doc, name) -> anchor) and
+    cut the "almost the last 50" list. Only resources still on the site
+    survive. The cut never splits a same-day upload batch — unless that one
+    day already overflows limit + RECENT_TIE_BONUS, which hard-caps the
+    page."""
+    rows = []
+    for a in additions:
+        doc = site_doc(a["path"])
+        anchor = locations.get((doc, a["name"].casefold()))
+        if anchor is None:
+            continue
+        rows.append({**a, "doc": doc, "anchor": anchor})
+    if len(rows) > limit:
+        cut = limit
+        boundary = rows[cut - 1]["date"]
+        while (cut < len(rows) and rows[cut]["date"] == boundary
+               and cut < limit + RECENT_TIE_BONUS):
+            cut += 1
+        rows = rows[:cut]
+    return rows
+
+
+def render_recent(rows, ref=None):
+    """Recent uploads hub: newest first, one entry line per upload — the
+    tool deep-linked to its anchored entry like the Tags hub does, plus its
+    catalog description — followed by the uploader and date on their own
+    credit line (S5). No tag chips here (S4): without them the
+    tags-filter.js toolbar can never mount on this page."""
+    lines = ["# Recent uploads", "",
+             '<p class="hp-tag-sub">The newest additions to the catalog,',
+             "compiled from the repository history when the site is",
+             "generated, newest first. Each line links to the resource on",
+             "its page and credits the contributor who uploaded it.</p>",
+             ""]
+    if not rows:
+        lines.append("_No upload history was available when this site was "
+                     "generated._")
+        return "\n".join(lines) + "\n"
+    for a in rows:
+        line = f"- [{a['name']}]({a['doc']}#{a['anchor']})"
+        if a["desc"]:
+            line += f" — {a['desc']}"
+        line += (' <span class="hp-credit">'
+                 + uploader_credit(a["login"], a["date"], ref) + "</span>")
+        lines.append(line)
+    return "\n".join(lines) + "\n"
+
+
+def convert(source, dest, meta, repo_url, tagged=False, sink=None,
+            entries=None):
     text = source.read_text(encoding="utf-8")
     dest.parent.mkdir(parents=True, exist_ok=True)
     rel_dir = dest.parent.relative_to(DOCS).as_posix()
@@ -309,12 +526,17 @@ def convert(source, dest, meta, repo_url, tagged=False, sink=None):
     body = transform(text, meta, repo_url, tagged=tagged,
                      tags_href=tags_href, sink=page_hits)
     dest.write_text(body, encoding="utf-8")
-    if sink is not None:
-        doc = dest.relative_to(DOCS).as_posix()
-        for name, entry_anchor, tags, desc in page_hits:
+    doc = dest.relative_to(DOCS).as_posix()
+    for name, entry_anchor, tags, desc in page_hits:
+        if sink is not None:
             for tag, _is_type in tags:
                 sink.setdefault(tag, []).append((name, doc, entry_anchor, desc))
-    return dest.relative_to(DOCS).as_posix()
+        if entries is not None:
+            # (doc, lowercased name) -> anchor: the live join key for the
+            # Recent uploads view, fed by the anchors that transform just
+            # minted. Tags are not needed here: the view shows no chips.
+            entries.setdefault((doc, name.casefold()), entry_anchor)
+    return doc
 
 
 def yaml_quote(value):
@@ -363,6 +585,11 @@ a.hp-tag.on::after { content: " \\2713"; font-weight: 700; }
 .hp-tags::before { content: "tags:"; font-family: "JetBrains Mono", monospace; font-size: .62rem; color: var(--md-default-fg-color--light); letter-spacing: .06em; margin-right: .35rem; }
 a.hp-tag:hover { transform: translateY(-2px); box-shadow: 0 4px 14px #10b9813d; filter: brightness(1.12); }
 a.hp-tag:active { transform: translateY(0); box-shadow: 0 1px 4px #10b98133; }
+.hp-credit { display: block; margin-top: .4rem; font-size: .78rem; color: #94a3b8; }
+.hp-credit a { color: #6ee7b7; text-decoration: none; font-weight: 600; }
+.hp-avatar { width: 20px; height: 20px; border-radius: 50%; vertical-align: -4px; margin-right: .45rem; }
+[data-md-color-scheme="default"] .hp-credit { color: #64748b; }
+[data-md-color-scheme="default"] .hp-credit a { color: #047857; }
 .hp-filterbar { position: sticky; top: 2.6rem; z-index: 4; background: var(--md-default-bg-color); border: 1px solid var(--md-default-fg-color--lightest); border-radius: 10px; padding: .55rem .8rem; margin: .6rem 0 1rem; }
 .hp-filter-lbl { font-family: "JetBrains Mono", monospace; font-size: .7rem; color: var(--md-default-fg-color--light); text-transform: uppercase; margin-right: .5rem; }
 .hp-filter-row { margin-top: .4rem; }
@@ -601,9 +828,11 @@ def build(out_dir, repo_url):
     if (ROOT / "CONTRIBUTING.md").exists():
         convert(ROOT / "CONTRIBUTING.md", DOCS / "contributing.md", meta, repo_url)
         nav.append(("Contributing", "contributing.md"))
+    nav.append(("Recent uploads", "recent.md"))
     nav.append(("Tags", "tags.md"))
 
     tag_index = {}
+    recent_locations = {}
     category_pages = []
     for category_dir in sorted(
         p for p in ROOT.iterdir() if p.is_dir() and CATEGORY_DIR_RE.match(p.name)
@@ -613,17 +842,20 @@ def build(out_dir, repo_url):
         cat_nav = []
         cat_file = f"{category_dir.name}/index.md"
         convert(category_dir / "README.md", DOCS / cat_file, meta, repo_url,
-                tagged=True, sink=tag_index)
+                tagged=True, sink=tag_index, entries=recent_locations)
         cat_nav.append(("Overview", cat_file))
         for leaf_dir in sorted(p for p in category_dir.iterdir() if p.is_dir()):
             leaf_title = page_title(leaf_dir / "README.md")
             leaf_file = f"{category_dir.name}/{leaf_dir.name}/index.md"
             convert(leaf_dir / "README.md", DOCS / leaf_file, meta, repo_url,
-                    tagged=True, sink=tag_index)
+                    tagged=True, sink=tag_index, entries=recent_locations)
             cat_nav.append((leaf_title, leaf_file))
         category_pages.append((cat_crumb, cat_nav))
     nav.extend(category_pages)
     (DOCS / "tags.md").write_text(render_tags(tag_index), encoding="utf-8")
+    (DOCS / "recent.md").write_text(
+        render_recent(select_recent(recent_additions(), recent_locations)),
+        encoding="utf-8")
 
     checked = meta.get("checked_at")
     if checked:
