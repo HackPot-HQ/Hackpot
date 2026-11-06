@@ -14,5 +14,6 @@ exclude = [
   'mailto:',
   '^https://img\.shields\.io/',
   '^https://api\.shields\.badge\.shields\.io/',
+  '^https://www\.fcc\.gov/oet/ea/fccid',
 ]
 exclude_path = [".git/*", "docs/*", "site/*"]
