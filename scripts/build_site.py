@@ -326,15 +326,37 @@ def github_login(email, name):
     return name
 
 
-def uploader_credit(login):
-    """Markdown-safe uploader credit (risk finding R1: logins come from
-    commit author metadata, which no reviewed diff constrains). Only the
-    GitHub login grammar may become a profile link; anything else is
-    stripped to harmless display text, and '' becomes '@unknown'."""
+def upload_age(when, ref=None):
+    """Human age of an upload against ref (default today, at build time):
+    today / yesterday / N days ago (<14d) / N weeks ago (<60d) /
+    N months ago (30-day months)."""
+    days = (ref or date.today()).toordinal() - date.fromisoformat(when).toordinal()
+    if days <= 0:
+        return "today"
+    if days == 1:
+        return "yesterday"
+    if days < 14:
+        return f"{days} days ago"
+    if days < 60:
+        return f"{days // 7} weeks ago"
+    return f"{days // 30} months ago"
+
+
+def uploader_credit(login, when, ref=None):
+    """Own-line credit (user pick 2026-11-06, POC V2): avatar + linked
+    login, human age and the exact DD-MM-YYYY stamp. Risk finding R1 stays
+    gated: the login is commit-author metadata no reviewed diff constrains,
+    so the avatar <img> and the profile link are built ONLY for
+    GitHub-grammar logins; anything else degrades to stripped plain text
+    with no markup at all."""
     if GITHUB_LOGIN_RE.fullmatch(login):
-        return f"[@{login}](https://github.com/{login})"
-    safe = re.sub(r"[^A-Za-z0-9._+-]", "", login)[:39]
-    return "@" + (safe or "unknown")
+        who = (f'<img class="hp-avatar" '
+               f'src="https://github.com/{login}.png?size=48" alt="" '
+               f'title="{login}">[@{login}](https://github.com/{login})')
+    else:
+        safe = re.sub(r"[^A-Za-z0-9._+-]", "", login)[:39]
+        who = "@" + (safe or "unknown")
+    return f"{who} · {upload_age(when, ref)} ({format_date(when)})"
 
 
 def _added_entry(raw):
@@ -461,10 +483,12 @@ def select_recent(additions, locations, limit=RECENT_LIMIT):
     return rows
 
 
-def render_recent(rows):
-    """Recent uploads hub: newest first, one line per upload — the tool
-    deep-linked to its anchored entry like the Tags hub does, its catalog
-    description, its tag chips and the contributor who uploaded it."""
+def render_recent(rows, ref=None):
+    """Recent uploads hub: newest first, one entry line per upload — the
+    tool deep-linked to its anchored entry like the Tags hub does, plus its
+    catalog description — followed by the uploader and date on their own
+    credit line (S5). No tag chips here (S4): without them the
+    tags-filter.js toolbar can never mount on this page."""
     lines = ["# Recent uploads", "",
              '<p class="hp-tag-sub">The newest additions to the catalog,',
              "compiled from the repository history when the site is",
@@ -479,9 +503,8 @@ def render_recent(rows):
         line = f"- [{a['name']}]({a['doc']}#{a['anchor']})"
         if a["desc"]:
             line += f" — {a['desc']}"
-        line += f" — ⬆ {uploader_credit(a['login'])} · {a['date']}"
-        if a["tags"]:
-            line += " " + tag_chips(a["tags"], "tags.md")
+        line += (' <span class="hp-credit">'
+                 + uploader_credit(a["login"], a["date"], ref) + "</span>")
         lines.append(line)
     return "\n".join(lines) + "\n"
 
@@ -555,6 +578,11 @@ a.hp-tag.on::after { content: " \\2713"; font-weight: 700; }
 .hp-tags::before { content: "tags:"; font-family: "JetBrains Mono", monospace; font-size: .62rem; color: var(--md-default-fg-color--light); letter-spacing: .06em; margin-right: .35rem; }
 a.hp-tag:hover { transform: translateY(-2px); box-shadow: 0 4px 14px #10b9813d; filter: brightness(1.12); }
 a.hp-tag:active { transform: translateY(0); box-shadow: 0 1px 4px #10b98133; }
+.hp-credit { display: block; margin-top: .4rem; font-size: .78rem; color: #94a3b8; }
+.hp-credit a { color: #6ee7b7; text-decoration: none; font-weight: 600; }
+.hp-avatar { width: 20px; height: 20px; border-radius: 50%; vertical-align: -4px; margin-right: .45rem; }
+[data-md-color-scheme="default"] .hp-credit { color: #64748b; }
+[data-md-color-scheme="default"] .hp-credit a { color: #047857; }
 .hp-filterbar { position: sticky; top: 2.6rem; z-index: 4; background: var(--md-default-bg-color); border: 1px solid var(--md-default-fg-color--lightest); border-radius: 10px; padding: .55rem .8rem; margin: .6rem 0 1rem; }
 .hp-filter-lbl { font-family: "JetBrains Mono", monospace; font-size: .7rem; color: var(--md-default-fg-color--light); text-transform: uppercase; margin-right: .5rem; }
 .hp-filter-row { margin-top: .4rem; }

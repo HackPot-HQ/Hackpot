@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from datetime import date
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import build_site  # noqa: E402
@@ -701,6 +702,10 @@ class RecentUploads(unittest.TestCase):
                          build_site.RECENT_LIMIT + build_site.RECENT_TIE_BONUS)
 
     def test_render_recent_row_shows_tool_description_and_uploader(self):
+        # Chosen design (user pick 2026-11-06, POC V2): entry line, then the
+        # uploader and date on their own credit line — avatar + @login +
+        # human age + exact DD-MM-YYYY. No tag chips, so tags-filter.js
+        # can never activate on this page (S4).
         rows = [
             {"name": "9Ghz", "doc": "01_Recon_and_OSINT/OSINT/index.md",
              "anchor": "e-9ghz", "desc": "Check if you are in any data breach.",
@@ -711,47 +716,61 @@ class RecentUploads(unittest.TestCase):
              "login": "Vallejos115", "date": "2026-10-30",
              "iso": "2026-10-30T10:00:00+01:00"},
         ]
-        page = build_site.render_recent(rows)
+        ref = date(2026, 11, 10)
+        page = build_site.render_recent(rows, ref=ref)
         self.assertTrue(page.startswith("# Recent uploads"))
         self.assertIn("- [9Ghz](01_Recon_and_OSINT/OSINT/index.md#e-9ghz) — "
                       "Check if you are in any data breach.", page)
-        self.assertIn("— ⬆ [@J0nan](https://github.com/J0nan) · 2026-11-05", page)
-        self.assertIn('href="tags.md#t-tool"', page)   # chips into the Tags hub
+        # own-line credit, human age, site date convention
+        line = next(l for l in page.split("\n") if l.startswith("- [9Ghz]"))
+        self.assertIn('<span class="hp-credit">', line)
+        self.assertIn('src="https://github.com/J0nan.png?size=48"', line)
+        self.assertIn("[@J0nan](https://github.com/J0nan)", line)
+        self.assertIn("5 days ago (05-11-2026)", line)
         self.assertLess(page.index("[9Ghz]"), page.index("[OldTool]"),
                         "newest first")
-        old_line = next(l for l in page.split("\n") if l.startswith("- [OldTool]"))
-        self.assertNotIn("hp-tags", old_line)          # untagged entry: no span
+        # S4: no chips anywhere on the page (data-tag anchors are what
+        # tags-filter.js hunts for; hp-tag-sub is the intro paragraph).
+        self.assertNotIn("hp-tags", page)
+        self.assertNotIn('data-tag="', page)
+
+    def test_upload_age_human_boundaries(self):
+        ref = date(2026, 11, 10)
+        cases = {"2026-11-10": "today", "2026-11-09": "yesterday",
+                 "2026-10-28": "13 days ago", "2026-10-27": "2 weeks ago",
+                 "2026-09-12": "8 weeks ago", "2026-09-11": "2 months ago",
+                 "2025-09-16": "14 months ago"}
+        for iso, want in cases.items():
+            self.assertEqual(build_site.upload_age(iso, ref), want, iso)
 
     def test_render_recent_without_history_degrades_to_notice(self):
         page = build_site.render_recent([])
         self.assertTrue(page.startswith("# Recent uploads"))
         self.assertIn("history", page.lower())
 
-    def test_uploader_credit_links_only_github_grammar_logins(self):
-        # GitHub logins: alphanumerics with single internal hyphens, 1-39,
-        # never edge-hyphen. Those (and only those) get the profile link.
+    def test_credit_avatar_and_link_only_for_grammar_logins(self):
+        # Risk finding R1 stays gated after the V2 redesign: avatar and
+        # profile link may only be built from GitHub-grammar logins;
+        # anything else degrades to harmless stripped text, no img, no a.
         good = {"name": "T", "doc": "d/index.md", "anchor": "e-t",
                 "desc": "", "tags": [], "date": "2026-11-05",
                 "iso": "2026-11-05T10:00:00+01:00"}
-        base = build_site.render_recent([dict(good, login="J0nan")])
-        self.assertIn("[@J0nan](https://github.com/J0nan)", base)
-        self.assertIn("[@a-b](https://github.com/a-b)",
-                      build_site.render_recent([dict(good, login="a-b")]))
-        # Anything outside the grammar is commit metadata we never reviewed:
-        # it must degrade to harmless text, never to markdown link syntax.
+        ref = date(2026, 11, 12)
+        page = build_site.render_recent([dict(good, login="a-b")], ref=ref)
+        self.assertIn("https://github.com/a-b.png?size=48", page)
+        self.assertIn("[@a-b](https://github.com/a-b)", page)
         evil = build_site.render_recent(
-            [dict(good, login="ev[il](javascript:alert(1))x")])
+            [dict(good, login="ev[il](javascript:alert(1))x")], ref=ref)
         self.assertNotIn("javascript:", evil)
-        self.assertNotIn("⬆ [@evil", evil)                # credit is not a link
-        self.assertNotIn("https://github.com/", evil.split("</p>", 1)[1])
+        self.assertNotIn("<img", evil)
+        self.assertNotIn("](https", evil.split("</p>", 1)[1])
         self.assertIn("@eviljavascriptalert1x", evil)
-        forty = "a" * 40                      # over GitHub's 39-char cap
-        page = build_site.render_recent([dict(good, login=forty)])
-        self.assertNotIn("https://github.com/", page.split("</p>", 1)[1])
-        self.assertIn("@" + "a" * 39, page)
-        page = build_site.render_recent([dict(good, login="")])
-        self.assertIn("@unknown", page)
-        self.assertNotIn("[@unknown](", page)
+        forty = build_site.render_recent([dict(good, login="a" * 40)], ref=ref)
+        self.assertNotIn("<img", forty)
+        self.assertIn("@" + "a" * 39, forty)
+        blank = build_site.render_recent([dict(good, login="")], ref=ref)
+        self.assertIn("@unknown", blank)
+        self.assertNotIn("<img", blank)
 
     def test_shallow_checkout_yields_no_additions_not_misattribution(self):
         # Verifier advisory 1 (2026-11-05): in a depth-1 clone `git log -p`
@@ -826,18 +845,32 @@ class RecentUploadsGenerated(unittest.TestCase):
             path, frag = target.split("#", 1)
             text = (self.docs / path).read_text(encoding="utf-8")
             self.assertIn(f'<a id="{frag}"></a>', text, f"{target} dangling")
-        self.assertRegex(page, r"⬆ \[@[^\]]+\]\(https://github\.com/")
+        # Chosen credit line (POC V2): avatar, profile link, human age and
+        # the exact date in the site's DD-MM-YYYY convention.
+        self.assertIn('<span class="hp-credit">', page)
+        self.assertRegex(page, r"src=\"https://github\.com/[^\"]+\.png\?size=48\"")
+        self.assertRegex(page, r"\[@[^\]]+\]\(https://github\.com/")
+        self.assertRegex(page, r"\(\d{2}-\d{2}-\d{4}\)")
+        # S4: the view carries no chips, so the filter toolbar never mounts.
+        self.assertNotIn("hp-tags", page)
         self.assertLessEqual(len(links),
                              build_site.RECENT_LIMIT + build_site.RECENT_TIE_BONUS)
 
-    def test_recent_rows_are_strictly_newest_first(self):
+    def test_recent_credit_css_ships(self):
+        # The own-line credit (S5) needs its classes in the shipped theme.
+        css = (self.docs / "stylesheets" / "theme.css").read_text(encoding="utf-8")
+        self.assertIn(".hp-credit { display: block;", css)
+        self.assertIn(".hp-avatar {", css)
+        self.assertIn('[data-md-color-scheme="default"] .hp-credit', css)
         # Verifier regression (2026-11-05): chronological order is the whole
-        # point of the view; pin it on the real generated page.
+        # point of the view; pin it on the real generated page. Dates are
+        # rendered DD-MM-YYYY inside the credit line.
         page = (self.docs / "recent.md").read_text(encoding="utf-8")
-        dates = re.findall(r"· (\d{4}-\d{2}-\d{2})", page)
-        if not dates:
+        stamp = re.findall(r"\((\d{2})-(\d{2})-(\d{4})\)", page)
+        iso = [f"{y}-{m}-{d}" for d, m, y in stamp]
+        if not iso:
             self.skipTest("no git history available for this build")
-        self.assertEqual(dates, sorted(dates, reverse=True))
+        self.assertEqual(iso, sorted(iso, reverse=True))
 
 
 if __name__ == "__main__":
