@@ -10,3 +10,4 @@ Vulnerable machines, platforms, and labs for hands-on practice.
 - [ICSsVirtualForCiberSec](https://github.com/sfl0r3nz05/ICSsVirtualForCiberSec) — ICSs virtualized lab for cybersecurity testing. `type:lab` `ics` `scada` `modbus` `plc`
 - [labshock](https://github.com/zakharb/labshock) — OT Security Lab for ICS networks. `type:lab` `ics` `scada` `modbus` `ot` `plc`
 - [OT-NWbasedOnGNS3](https://github.com/sfl0r3nz05/OT-NWbasedOnGNS3) — Project created to practice SDN-based Attack & Defence on Modbus/TCP and HTTP protocols in an ICS network. `type:lab` `modbus` `ics`
+- [PwnPad](https://github.com/twelvesec/PwnPad) — PwnPad is an affordable, hands-on hardware hacking platform built for practical learning. It features a range of challenges that walk users through key hardware security concepts, from PCB design to side-channel attacks. `type:lab` `firmware` `hardware` `i2c` `jtag` `lot` `pcb` `spi` `swd` `uart`
