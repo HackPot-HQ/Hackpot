@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-11-13T06:51:57Z",
+  "checked_at": "2026-11-20T07:24:31Z",
   "rate_limited": false,
   "repos": {
     "Fortiphyd/GRFICSv3": {
@@ -7,91 +7,98 @@
       "last_update": "2026-11-11",
       "not_found": false,
       "pushed_at": "2026-11-11T22:55:23Z",
-      "stars": 295
+      "stars": 305
     },
     "Gentleman-Programming/engram": {
       "default_branch": "main",
-      "last_update": "2026-11-12",
+      "last_update": "2026-11-17",
       "not_found": false,
-      "pushed_at": "2026-11-12T22:03:37Z",
-      "stars": 8079
+      "pushed_at": "2026-11-17T18:51:06Z",
+      "stars": 8242
     },
     "Gentleman-Programming/gentle-ai": {
       "default_branch": "main",
-      "last_update": "2026-11-13",
+      "last_update": "2026-11-20",
       "not_found": false,
-      "pushed_at": "2026-11-13T01:22:50Z",
-      "stars": 9037
+      "pushed_at": "2026-11-20T04:09:27Z",
+      "stars": 9420
     },
     "Graphify-Labs/graphify": {
       "default_branch": "v8",
-      "last_update": "2026-11-12",
+      "last_update": "2026-11-20",
       "not_found": false,
-      "pushed_at": "2026-11-12T21:47:45Z",
-      "stars": 146878
+      "pushed_at": "2026-11-20T02:40:11Z",
+      "stars": 150772
     },
     "ITI/ICS-Security-Tools": {
       "default_branch": "master",
       "last_update": "2026-11-01",
       "not_found": false,
       "pushed_at": "2026-11-01T19:23:56Z",
-      "stars": 2082
+      "stars": 2085
     },
     "JoasASantos/Offensive-Security-AI-Models": {
       "default_branch": "main",
       "last_update": "2026-09-28",
       "not_found": false,
       "pushed_at": "2026-09-28T14:34:47Z",
-      "stars": 838
+      "stars": 861
+    },
+    "Niko1221/Strata": {
+      "default_branch": "main",
+      "last_update": "2026-11-18",
+      "not_found": false,
+      "pushed_at": "2026-11-18T22:40:46Z",
+      "stars": 46076
     },
     "SnaffCon/Snaffler": {
       "default_branch": "master",
       "last_update": "2026-02-27",
       "not_found": false,
       "pushed_at": "2026-02-27T00:57:16Z",
-      "stars": 2993
+      "stars": 3000
     },
     "bee-san/Ciphey": {
       "default_branch": "master",
       "last_update": "2026-11-06",
       "not_found": false,
       "pushed_at": "2026-11-06T16:54:13Z",
-      "stars": 21758
+      "stars": 21777
     },
     "blackhillsinfosec/WifiForge": {
       "default_branch": "main",
       "last_update": "2026-11-02",
       "not_found": false,
       "pushed_at": "2026-11-02T20:59:47Z",
-      "stars": 1235
+      "stars": 1239
     },
     "caido/caido": {
       "default_branch": "main",
       "last_update": "2026-10-30",
       "not_found": false,
-      "pushed_at": "2026-10-30T16:04:31Z",
-      "stars": 2732
+      "pushed_at": "2026-11-13T18:00:56Z",
+      "stars": 2744
     },
     "claration/impactor": {
       "default_branch": "main",
-      "last_update": "2026-11-12",
+      "last_update": "2026-11-17",
       "not_found": false,
-      "pushed_at": "2026-11-12T18:37:00Z",
-      "stars": 3851
+      "pushed_at": "2026-11-17T00:49:25Z",
+      "stars": 3928
     },
     "colbymchenry/codegraph": {
       "default_branch": "main",
-      "last_update": "2026-11-01",
+      "last_update": "2026-11-19",
       "not_found": false,
-      "pushed_at": "2026-11-01T17:36:07Z",
-      "stars": 77505
+      "pushed_at": "2026-11-19T20:43:18Z",
+      "stars": 78178
     },
     "collin80/SavvyCAN": {
       "default_branch": "QT6WIP",
-      "last_update": "2026-11-04",
+      "last_update": "2026-11-17",
       "not_found": false,
-      "pushed_at": "2026-11-04T01:05:54Z",
-      "stars": 1926
+      "pushed_at": "2026-11-17T02:16:13Z",
+      "stars": 1933
     },
     "cyberaz0r/thc-ssl-dos_mod": {
       "default_branch": "main",
@@ -109,10 +116,10 @@
     },
     "danielmiessler/SecLists": {
       "default_branch": "master",
-      "last_update": "2026-11-12",
+      "last_update": "2026-11-19",
       "not_found": false,
-      "pushed_at": "2026-11-12T11:10:27Z",
-      "stars": 74729
+      "pushed_at": "2026-11-19T17:09:45Z",
+      "stars": 74852
     },
     "davtur19/DotGit": {
       "default_branch": "master",
@@ -123,17 +130,17 @@
     },
     "debpalash/VoiceStudio": {
       "default_branch": "main",
-      "last_update": "2026-11-12",
+      "last_update": "2026-11-20",
       "not_found": false,
-      "pushed_at": "2026-11-13T02:29:40Z",
-      "stars": 109397
+      "pushed_at": "2026-11-20T06:36:04Z",
+      "stars": 114706
     },
     "dronesploit/dronesploit": {
       "default_branch": "main",
       "last_update": "2024-11-23",
       "not_found": false,
       "pushed_at": "2024-11-23T13:13:00Z",
-      "stars": 2205
+      "stars": 2208
     },
     "flipkart-incubator/Astra": {
       "default_branch": "master",
@@ -147,21 +154,21 @@
       "last_update": "2026-10-07",
       "not_found": false,
       "pushed_at": "2026-10-07T19:16:53Z",
-      "stars": 16
+      "stars": 17
     },
     "geo-tp/ESP32-Bit-Pirate": {
       "default_branch": "pioarduino",
-      "last_update": "2026-10-26",
+      "last_update": "2026-11-17",
       "not_found": false,
-      "pushed_at": "2026-11-08T09:48:00Z",
-      "stars": 6378
+      "pushed_at": "2026-11-17T20:18:16Z",
+      "stars": 6408
     },
     "huntergregal/mimipenguin": {
       "default_branch": "master",
       "last_update": "2025-09-05",
       "not_found": false,
       "pushed_at": "2025-09-05T16:43:43Z",
-      "stars": 4187
+      "stars": 4190
     },
     "jpalanco/nmap-scada": {
       "default_branch": "master",
@@ -175,21 +182,21 @@
       "last_update": "2021-11-01",
       "not_found": false,
       "pushed_at": "2021-11-01T21:47:10Z",
-      "stars": 363
+      "stars": 366
     },
     "lycheeverse/lychee": {
       "default_branch": "master",
       "last_update": "2026-11-12",
       "not_found": false,
-      "pushed_at": "2026-11-12T20:47:54Z",
-      "stars": 4125
+      "pushed_at": "2026-11-16T12:44:27Z",
+      "stars": 4147
     },
     "mikeryan/crackle": {
       "default_branch": "master",
       "last_update": "2020-12-12",
       "not_found": false,
       "pushed_at": "2021-08-26T08:56:39Z",
-      "stars": 981
+      "stars": 983
     },
     "neutrinoguy/awesome-ics-writeups": {
       "default_branch": "main",
@@ -203,35 +210,35 @@
       "last_update": "2026-09-29",
       "not_found": false,
       "pushed_at": "2026-09-29T00:13:22Z",
-      "stars": 865
+      "stars": 869
     },
     "nirajkharel/AD-Pentesting-Notes": {
       "default_branch": "main",
       "last_update": "2023-08-25",
       "not_found": false,
       "pushed_at": "2023-08-25T05:36:45Z",
-      "stars": 332
+      "stars": 333
     },
     "nmatt0/mithril": {
       "default_branch": "master",
       "last_update": "2026-11-12",
       "not_found": false,
       "pushed_at": "2026-11-12T13:13:26Z",
-      "stars": 402
+      "stars": 411
     },
     "nmatt0/moria": {
       "default_branch": "master",
       "last_update": "2026-11-12",
       "not_found": false,
-      "pushed_at": "2026-11-12T14:54:05Z",
-      "stars": 461
+      "pushed_at": "2026-11-17T00:18:32Z",
+      "stars": 472
     },
     "pr0v3rbs/FirmAE": {
       "default_branch": "master",
       "last_update": "2026-06-24",
       "not_found": false,
       "pushed_at": "2026-06-24T15:34:02Z",
-      "stars": 964
+      "stars": 972
     },
     "scipag/nac_bypass": {
       "default_branch": "master",
@@ -261,47 +268,54 @@
       "pushed_at": "2023-06-10T14:45:30Z",
       "stars": 24
     },
+    "stealthcopter/deepce": {
+      "default_branch": "main",
+      "last_update": "2025-12-21",
+      "not_found": false,
+      "pushed_at": "2025-12-21T11:52:01Z",
+      "stars": 1596
+    },
     "swisskyrepo/PayloadsAllTheThings": {
       "default_branch": "master",
       "last_update": "2026-10-30",
       "not_found": false,
       "pushed_at": "2026-10-30T15:58:03Z",
-      "stars": 82640
+      "stars": 82810
     },
     "twelvesec/PwnPad": {
       "default_branch": "main",
       "last_update": "2025-12-05",
       "not_found": false,
       "pushed_at": "2025-12-05T14:44:31Z",
-      "stars": 1209
+      "stars": 1212
     },
     "upstash/context7": {
       "default_branch": "master",
-      "last_update": "2026-11-12",
+      "last_update": "2026-11-19",
       "not_found": false,
-      "pushed_at": "2026-11-12T12:50:44Z",
-      "stars": 64713
+      "pushed_at": "2026-11-19T13:44:00Z",
+      "stars": 65154
     },
     "v12-security/pocs": {
       "default_branch": "main",
       "last_update": "2026-10-27",
       "not_found": false,
       "pushed_at": "2026-10-27T20:49:10Z",
-      "stars": 1157
+      "stars": 1161
     },
     "vxcontrol/pentagi": {
       "default_branch": "main",
       "last_update": "2026-10-22",
       "not_found": false,
-      "pushed_at": "2026-10-22T23:26:13Z",
-      "stars": 34055
+      "pushed_at": "2026-11-13T23:40:49Z",
+      "stars": 34651
     },
     "zakharb/labshock": {
       "default_branch": "main",
       "last_update": "2026-05-28",
       "not_found": false,
       "pushed_at": "2026-05-28T16:39:14Z",
-      "stars": 805
+      "stars": 808
     }
   }
 }
